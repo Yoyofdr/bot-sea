@@ -508,3 +508,22 @@ class SEIAStorage:
                 scraped_at=datetime.fromisoformat(row['scraped_at']) if row['scraped_at'] else None
             )
 
+
+def clear_database(db_path: Optional[Path] = None) -> None:
+    """
+    Limpia completamente la base de datos eliminando el archivo.
+    
+    Útil para empezar de cero con la nueva estrategia de monitoreo.
+    
+    Args:
+        db_path: Ruta de la base de datos (usa Config si no se especifica)
+    """
+    if db_path is None:
+        db_path = Config.get_db_path()
+    
+    if db_path.exists():
+        db_path.unlink()
+        logger.info(f"Base de datos limpiada: {db_path}")
+    else:
+        logger.info("Base de datos no existe, no hay nada que limpiar")
+

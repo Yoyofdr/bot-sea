@@ -111,18 +111,13 @@ class SEIARequestsScraper:
         Returns:
             HTML de la página o None si falla
         """
-        # Preparar datos del formulario
-        # Estos parámetros pueden variar, ajustar según el formulario real
+        # Preparar datos del formulario para búsqueda de proyectos aprobados
         form_data = {
-            'fechaDesde': self.config.FECHA_DESDE,
+            'estadoProyecto': 'Aprobado',
             'pagina': str(page_num),
             # Campos adicionales comunes en formularios SEIA:
             'buscar': '1',
             'orden': 'fecha',
-            # Otros posibles campos (descomentar si son necesarios):
-            # 'region': '',
-            # 'tipo': '',
-            # 'estado': '',
         }
         
         logger.info(f"Obteniendo página {page_num}")

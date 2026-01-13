@@ -1,21 +1,20 @@
 # Sistema de Monitoreo SEIA (Chile)
 
-Sistema profesional y robusto en Python para monitorear diariamente la página oficial del SEIA (Sistema de Evaluación de Impacto Ambiental de Chile), detectando nuevos proyectos y cambios relevantes de estado.
+Sistema profesional y robusto en Python para monitorear diariamente la página oficial del SEIA (Sistema de Evaluación de Impacto Ambiental de Chile), detectando nuevos proyectos aprobados.
 
 ## 📋 Descripción
 
 Este sistema automatiza el monitoreo del [SEIA](https://seia.sea.gob.cl/busqueda/buscarProyectoResumen.php) para:
 
-- **Monitorear proyectos** desde enero 2025 en adelante
-- **Detectar cambio de estado relevante**:
-  - **En Calificación (Activo) → Aprobado**
+- **Monitorear proyectos con estado "Aprobado"** (los 100 más recientes)
+- **Detectar nuevos proyectos aprobados** que aparecen en la lista
 - **Extraer información detallada** de proyectos aprobados:
-  - Tipo de proyecto y monto de inversión
-  - Descripción completa del proyecto
-  - Datos de titular y representante legal
-- **Notificar automáticamente** a Microsoft Teams con los detalles completos
+  - Nombre, titular, región y tipo de proyecto
+  - Monto de inversión y fecha de presentación
+  - Estado y días transcurridos
+- **Notificar automáticamente** a Microsoft Teams sobre nuevos proyectos aprobados
 - **Ejecutarse automáticamente** una vez al día a una hora fija
-- **Mantener historial completo** de todos los cambios y detalles
+- **Mantener historial completo** de todos los proyectos detectados
 
 ## 🎯 Características Principales
 
@@ -98,11 +97,11 @@ Todos los estados se normalizan antes de comparar:
 
 **Justificación**: Evita falsos positivos por diferencias de mayúsculas, tildes o espacios.
 
-### 4. Filtro Temporal
+### 4. Estrategia de Monitoreo Simplificada
 
-Solo monitorea proyectos ingresados desde **01/01/2025** en adelante.
+Monitorea directamente los **100 proyectos aprobados más recientes** (primera página del listado).
 
-**Justificación**: Reduce volumen de datos y enfoca en proyectos recientes relevantes.
+**Justificación**: Enfoque en proyectos recién aprobados, evitando complejidad de detectar cambios de estado.
 
 ## 📦 Instalación
 
@@ -149,7 +148,6 @@ Edita el archivo `.env` con tus valores:
 ```env
 # SEIA Configuration
 SEIA_BASE_URL=https://seia.sea.gob.cl/busqueda/buscarProyectoResumen.php
-FECHA_DESDE=01/01/2025
 SCRAPE_MODE=auto  # auto|requests|playwright
 
 # Teams Notification
@@ -161,7 +159,7 @@ DB_PATH=data/seia_monitor.db
 # Scraping Config
 REQUEST_TIMEOUT=30
 PLAYWRIGHT_HEADLESS=true
-MAX_PAGES=100
+MAX_PAGES=1  # Solo primera página (100 proyectos aprobados más recientes)
 MAX_PROJECTS_PER_RUN=10000
 
 # Scheduler

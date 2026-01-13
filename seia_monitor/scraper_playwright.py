@@ -47,7 +47,7 @@ class SEIAPlaywrightScraper:
     
     def _fill_and_submit_form(self, page: Page) -> bool:
         """
-        Llena y envía el formulario de búsqueda.
+        Llena y envía el formulario de búsqueda de proyectos aprobados.
         
         Args:
             page: Página de Playwright
@@ -59,35 +59,42 @@ class SEIAPlaywrightScraper:
             # Esperar que cargue la página
             page.wait_for_load_state('domcontentloaded')
             
-            # Buscar campo de fecha desde (Fecha de Presentación Mínima)
-            # SEIA usa: id="startDateFechaP" name="PresentacionMin"
-            fecha_selectors = [
-                'input[id="startDateFechaP"]',  # Campo correcto de SEIA
-                'input[name="PresentacionMin"]',  # Nombre alternativo
-                'input[name="fechaDesde"]',  # Fallback genérico
-                'input[id="fechaDesde"]',
-                'input[name*="fecha"]',
-                'input[type="date"]'
+            # PASO 1: Buscar y seleccionar "Aprobado" en el dropdown de Estado
+            estado_selectors = [
+                'select[name="estadoProyecto"]',
+                'select[id="estadoProyecto"]',
+                'select[name="estado"]',
+                'select[id="estado"]',
             ]
             
-            fecha_input = None
-            for selector in fecha_selectors:
+            estado_selected = False
+            for selector in estado_selectors:
                 try:
-                    fecha_input = page.query_selector(selector)
-                    if fecha_input:
-                        logger.debug(f"Campo fecha encontrado: {selector}")
-                        break
-                except:
+                    estado_select = page.query_selector(selector)
+                    if estado_select:
+                        logger.debug(f"Dropdown estado encontrado: {selector}")
+                        # Intentar seleccionar "Aprobado" por valor o texto
+                        try:
+                            page.select_option(selector, label='Aprobado')
+                            logger.info("Estado 'Aprobado' seleccionado")
+                            estado_selected = True
+                            break
+                        except:
+                            try:
+                                page.select_option(selector, value='Aprobado')
+                                logger.info("Estado 'Aprobado' seleccionado")
+                                estado_selected = True
+                                break
+                            except:
+                                pass
+                except Exception as e:
+                    logger.debug(f"Selector {selector} no funcionó: {e}")
                     continue
             
-            if fecha_input:
-                # Llenar fecha
-                fecha_input.fill(self.config.FECHA_DESDE)
-                logger.info(f"Fecha {self.config.FECHA_DESDE} ingresada")
-            else:
-                logger.warning("No se encontró campo de fecha, continuando sin filtro")
+            if not estado_selected:
+                logger.warning("No se pudo seleccionar estado 'Aprobado', continuando de todos modos")
             
-            # Buscar y clickear botón de búsqueda
+            # PASO 2: Buscar y clickear botón de búsqueda
             submit_selectors = [
                 'button[type="submit"]',
                 'input[type="submit"]',
@@ -330,8 +337,12 @@ class SEIAPlaywrightScraper:
                 
                 logger.info(f"Primera página: {len(projects)} proyectos")
                 
-                # Iterar páginas siguientes
-                while self._has_next_page(page) and pages_scraped < self.config.MAX_PAGES:
+                # IMPORTANTE: Solo procesamos la primera página (100 proyectos aprobados)
+                # No iteramos páginas adicionales ya que solo monitoreamos los más recientes
+                logger.info("Limitando a primera página - solo proyectos aprobados más recientes")
+                
+                # Iterar páginas siguientes (deshabilitado para monitoreo de aprobados)
+                while False and self._has_next_page(page) and pages_scraped < self.config.MAX_PAGES:
                     # Rate limiting
                     time.sleep(self.config.RATE_LIMIT_DELAY)
                     

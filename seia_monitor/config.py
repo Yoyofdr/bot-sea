@@ -20,9 +20,8 @@ class Config:
     # SEIA Configuration
     SEIA_BASE_URL: str = os.getenv(
         "SEIA_BASE_URL",
-        "https://seia.sea.gob.cl/busqueda/buscarProyecto.php"
+        "https://seia.sea.gob.cl/busqueda/buscarProyectoResumen.php"
     )
-    FECHA_DESDE: str = os.getenv("FECHA_DESDE", "01/01/2025")
     SCRAPE_MODE: str = os.getenv("SCRAPE_MODE", "auto")  # auto|requests|playwright
     
     # Teams Notification
@@ -34,7 +33,7 @@ class Config:
     # Scraping Config
     REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "30"))
     PLAYWRIGHT_HEADLESS: bool = os.getenv("PLAYWRIGHT_HEADLESS", "true").lower() == "true"
-    MAX_PAGES: int = int(os.getenv("MAX_PAGES", "100"))
+    MAX_PAGES: int = int(os.getenv("MAX_PAGES", "1"))
     MAX_PROJECTS_PER_RUN: int = int(os.getenv("MAX_PROJECTS_PER_RUN", "10000"))
     USER_AGENT: str = os.getenv(
         "USER_AGENT",
