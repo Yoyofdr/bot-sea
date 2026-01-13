@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Data y logs
+data/
+logs/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuración sensible
+.env
+.env.local
+
+# Temporales
+/tmp/
+*.tmp
+.DS_Store
+
+# Debug
+debug_*.html
+debug_*.png
+test_*.py
+test_*.log
+test_*.html
+*_sample.html
+scraping_completo.log
+ejecucion_real.log
+test_paginacion*.log
+formulario_*.html
+resultados_*.png
+screenshot_*.png
+
+# Playwright
+.playwright/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node
+node_modules/
+
+
