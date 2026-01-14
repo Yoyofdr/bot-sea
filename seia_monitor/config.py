@@ -24,8 +24,15 @@ class Config:
     )
     SCRAPE_MODE: str = os.getenv("SCRAPE_MODE", "auto")  # auto|requests|playwright
     
-    # Teams Notification
-    TEAMS_WEBHOOK_URL: Optional[str] = os.getenv("TEAMS_WEBHOOK_URL")
+    # Email Notification
+    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "true").lower() == "true"
+    EMAIL_HOST: str = os.getenv("EMAIL_HOST", "")
+    EMAIL_PORT: int = int(os.getenv("EMAIL_PORT", "25"))
+    EMAIL_USE_TLS: bool = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
+    EMAIL_USER: str = os.getenv("EMAIL_USER", "")
+    EMAIL_PASSWORD: str = os.getenv("EMAIL_PASSWORD", "")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "") or os.getenv("EMAIL_USER", "")
+    EMAIL_TO: str = os.getenv("EMAIL_TO", "")
     
     # Database
     DB_PATH: str = os.getenv("DB_PATH", "data/seia_monitor.db")
@@ -67,8 +74,8 @@ class Config:
         if cls.SCRAPE_MODE not in ["auto", "requests", "playwright"]:
             errors.append(f"SCRAPE_MODE inválido: {cls.SCRAPE_MODE}")
             
-        if cls.TEAMS_WEBHOOK_URL and not cls.TEAMS_WEBHOOK_URL.startswith("https://"):
-            errors.append("TEAMS_WEBHOOK_URL debe ser una URL HTTPS válida")
+        if cls.EMAIL_ENABLED and not cls.EMAIL_HOST:
+            errors.append("EMAIL_HOST es requerido cuando EMAIL_ENABLED=true")
             
         if cls.MAX_PAGES < 1:
             errors.append("MAX_PAGES debe ser >= 1")

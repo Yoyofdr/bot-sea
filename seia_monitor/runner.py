@@ -14,7 +14,7 @@ from seia_monitor.models import RunStats, ChangeResult
 from seia_monitor.scraper import scrape_seia
 from seia_monitor.storage import SEIAStorage
 from seia_monitor.diff import detect_changes
-from seia_monitor.notifier_teams import send_teams_notification
+from seia_monitor.notifier_email import send_email_notification
 from seia_monitor.scraper_detail import scrape_project_details
 
 logger = get_logger("runner")
@@ -49,7 +49,7 @@ class MonitoringRunner:
         2. Cargar snapshot anterior
         3. Detectar cambios
         4. Guardar a BD (si no dry_run y exitoso)
-        5. Enviar notificación Teams (si hay cambios)
+        5. Enviar notificación por Email (si hay cambios)
         6. Log de estadísticas
         
         Args:
@@ -183,27 +183,21 @@ class MonitoringRunner:
             else:
                 logger.info("Paso 4: Omitido (dry run)")
             
-            # 5. NOTIFICAR A TEAMS
-            if not dry_run and self.config.TEAMS_WEBHOOK_URL:
-                logger.info("Paso 5: Enviando notificación a Teams")
+            # 5. NOTIFICAR POR EMAIL
+            if not dry_run and self.config.EMAIL_ENABLED and result.nuevos:
+                logger.info("Paso 5: Enviando notificación por Email")
                 try:
-                    stats_dict = {
-                        'duration_seconds': time.time() - start_time,
-                        'total_projects': len(projects),
-                        'pages_scraped': scrape_meta.pages_scraped,
-                        'scrape_method': scrape_meta.method
-                    }
+                    logger.info(f"Enviando {len(result.nuevos)} proyecto(s) nuevo(s) por email")
                     
-                    notification_sent = send_teams_notification(
-                        self.config.TEAMS_WEBHOOK_URL,
-                        changes,
-                        stats_dict
+                    notification_sent = send_email_notification(
+                        result.nuevos,
+                        self.config
                     )
                     
                     if notification_sent:
-                        logger.info("✓ Notificación enviada a Teams")
+                        logger.info("✓ Notificación enviada por email")
                     else:
-                        logger.warning("⚠ No se pudo enviar notificación a Teams")
+                        logger.warning("⚠ No se pudo enviar notificación por email")
                 
                 except Exception as e:
                     error_msg = f"Error enviando notificación: {e}"
@@ -213,8 +207,10 @@ class MonitoringRunner:
             else:
                 if dry_run:
                     logger.info("Paso 5: Omitido (dry run)")
+                elif not self.config.EMAIL_ENABLED:
+                    logger.info("Paso 5: Omitido (no hay email configurado)")
                 else:
-                    logger.info("Paso 5: Omitido (no hay webhook configurado)")
+                    logger.info("Paso 5: Omitido (no hay proyectos nuevos)")
             
             # Corrida exitosa
             success = True
