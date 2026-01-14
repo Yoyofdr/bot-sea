@@ -14,7 +14,7 @@ from seia_monitor.logger import get_logger, setup_logger
 from seia_monitor.runner import run_monitoring
 from seia_monitor.scheduler import start_scheduler
 from seia_monitor.storage import SEIAStorage
-from seia_monitor.notifier_teams import test_teams_webhook
+# Teams notifier removed - now using email notifications
 
 # Inicializar app de Typer
 app = typer.Typer(
@@ -182,26 +182,7 @@ def status():
         sys.exit(1)
 
 
-@app.command()
-def test_teams():
-    """
-    Envía un mensaje de prueba al webhook de Teams.
-    """
-    if not Config.TEAMS_WEBHOOK_URL:
-        console.print("[red]✗ No hay TEAMS_WEBHOOK_URL configurado en .env[/red]")
-        sys.exit(1)
-    
-    console.print("[cyan]Enviando mensaje de prueba a Teams...[/cyan]")
-    
-    success = test_teams_webhook(Config.TEAMS_WEBHOOK_URL)
-    
-    if success:
-        console.print("[green]✓ Webhook funciona correctamente[/green]")
-        console.print("  Revisa el canal de Teams para ver el mensaje")
-    else:
-        console.print("[red]✗ Error enviando mensaje de prueba[/red]")
-        console.print("  Revisa el webhook URL y los logs para más detalles")
-        sys.exit(1)
+# test_teams command removed - Teams notifications replaced by Email
 
 
 @app.command()
