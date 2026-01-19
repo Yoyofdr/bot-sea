@@ -12,7 +12,7 @@ Este sistema automatiza el monitoreo del [SEIA](https://seia.sea.gob.cl/busqueda
   - Nombre, titular, región y tipo de proyecto
   - Monto de inversión y fecha de presentación
   - Estado y días transcurridos
-- **Notificar automáticamente** a Microsoft Teams sobre nuevos proyectos aprobados
+- **Notificar automáticamente por email** sobre nuevos proyectos aprobados
 - **Ejecutarse automáticamente** una vez al día a una hora fija
 - **Mantener historial completo** de todos los proyectos detectados
 
@@ -150,8 +150,12 @@ Edita el archivo `.env` con tus valores:
 SEIA_BASE_URL=https://seia.sea.gob.cl/busqueda/buscarProyectoResumen.php
 SCRAPE_MODE=auto  # auto|requests|playwright
 
-# Teams Notification
-TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/YOUR_WEBHOOK_HERE
+# Email Notification (Bye.cl API)
+EMAIL_ENABLED=true
+EMAIL_API_BASE_URL=https://app.bye.cl/api
+EMAIL_API_USER=usertech@bye.cl
+EMAIL_API_PASSWORD=user$T26.#
+EMAIL_TO=rfernandezdelrio@bye.cl,operaciones@bye.cl,finanzas@bye.cl
 
 # Database
 DB_PATH=data/seia_monitor.db
@@ -171,28 +175,24 @@ LOG_LEVEL=INFO
 LOG_FILE=logs/seia_monitor.log
 ```
 
-### Configurar Webhook de Microsoft Teams
+### Configurar Notificaciones por Email
 
-1. **Abrir Teams** → Ir al canal donde quieres recibir notificaciones
+El sistema envía notificaciones por email usando la API de Bye.cl:
 
-2. **Agregar conector**:
-   - Click en `•••` (más opciones) del canal
-   - Seleccionar "Conectores" o "Connectors"
-   - Buscar "Incoming Webhook"
-   - Click en "Configurar"
+1. **Credenciales de API**: Ya están configuradas en el `.env`:
+   - `EMAIL_API_USER`: Usuario de la API
+   - `EMAIL_API_PASSWORD`: Contraseña de la API
+   - `EMAIL_API_BASE_URL`: URL base de la API
 
-3. **Configurar el webhook**:
-   - Dar un nombre: "SEIA Monitor"
-   - Opcionalmente, subir una imagen
-   - Click en "Crear"
-
-4. **Copiar la URL**:
-   - Se mostrará una URL larga que empieza con `https://outlook.office.com/webhook/...`
-   - Copiar esta URL completa
-
-5. **Pegar en .env**:
+2. **Destinatarios**: Editar `EMAIL_TO` con los emails separados por comas:
    ```env
-   TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/[TU_URL_AQUI]
+   EMAIL_TO=email1@example.com,email2@example.com,email3@example.com
+   ```
+
+3. **Habilitar/Deshabilitar**: Cambiar `EMAIL_ENABLED`:
+   ```env
+   EMAIL_ENABLED=true   # Activado
+   EMAIL_ENABLED=false  # Desactivado
    ```
 
 6. **Probar**:
@@ -446,7 +446,7 @@ Proyecto SEA/
 │   ├── scraper.py          # Fachada AUTO
 │   ├── storage.py          # Capa de persistencia SQLite
 │   ├── diff.py             # Motor de detección de cambios
-│   ├── notifier_teams.py   # Notificador Teams
+│   ├── notifier_email.py   # Notificador Email (API Bye.cl)
 │   ├── runner.py           # Orquestador principal
 │   ├── scheduler.py        # Scheduler interno
 │   └── cli.py              # CLI con Typer

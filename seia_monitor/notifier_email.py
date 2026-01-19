@@ -1,11 +1,9 @@
 """
 Notificador por email para nuevos proyectos aprobados.
-Envía emails con formato HTML limpio y profesional.
+Envía emails con formato HTML limpio y profesional usando la API de Bye.cl.
 """
 
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from datetime import datetime
 from typing import Optional
 
@@ -117,6 +115,93 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
     return html
 
 
+def get_api_token(config: Config) -> Optional[str]:
+    """
+    Obtiene el token de autenticación de la API de Bye.cl.
+    
+    Args:
+        config: Configuración con credenciales
+    
+    Returns:
+        Token de autenticación o None si falla
+    """
+    try:
+        login_url = f"{config.EMAIL_API_BASE_URL}/Cuentas/login"
+        payload = {
+            "email": config.EMAIL_API_USER,
+            "password": config.EMAIL_API_PASSWORD
+        }
+        
+        logger.debug(f"Autenticando en API: {login_url}")
+        response = requests.post(login_url, json=payload, timeout=10)
+        response.raise_for_status()
+        
+        token = response.json().get("token")
+        if token:
+            logger.info("✓ Token de API obtenido exitosamente")
+            return token
+        else:
+            logger.error("La respuesta de login no contiene token")
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error obteniendo token de API: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Error inesperado obteniendo token: {e}")
+        return None
+
+
+def send_email_via_api(
+    to_address: str,
+    subject: str,
+    html_body: str,
+    token: str,
+    config: Config,
+    cc: str = ""
+) -> bool:
+    """
+    Envía un email usando la API de Bye.cl.
+    
+    Args:
+        to_address: Email del destinatario
+        subject: Asunto del email
+        html_body: Cuerpo HTML del email
+        token: Token de autenticación
+        config: Configuración
+        cc: Emails en copia (opcional)
+    
+    Returns:
+        True si se envió exitosamente, False en caso contrario
+    """
+    try:
+        send_url = f"{config.EMAIL_API_BASE_URL}/Email/SendEmailByE"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "toAddress": to_address,
+            "subject": subject,
+            "cc": cc,
+            "htmlBody": html_body
+        }
+        
+        logger.debug(f"Enviando email a: {to_address}")
+        response = requests.get(send_url, params=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        logger.info(f"✓ Email enviado exitosamente a {to_address}")
+        return True
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error enviando email via API: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Error inesperado enviando email: {e}")
+        return False
+
+
 def send_email_notification(
     proyectos_nuevos: list[Project],
     config: Optional[Config] = None
@@ -140,8 +225,12 @@ def send_email_notification(
         return False
     
     # Verificar configuración
-    if not config.EMAIL_HOST or not config.EMAIL_USER:
-        logger.warning("Configuración de email incompleta")
+    if not config.EMAIL_API_BASE_URL or not config.EMAIL_API_USER or not config.EMAIL_API_PASSWORD:
+        logger.warning("Configuración de email API incompleta")
+        return False
+    
+    if not config.EMAIL_TO:
+        logger.warning("EMAIL_TO no configurado")
         return False
     
     if not proyectos_nuevos:
@@ -149,64 +238,48 @@ def send_email_notification(
         return True
     
     try:
-        # Crear mensaje
-        msg = MIMEMultipart('alternative')
-        msg['From'] = config.EMAIL_FROM
-        msg['To'] = config.EMAIL_TO
-        msg['Subject'] = f"🎉 {len(proyectos_nuevos)} Nuevo(s) Proyecto(s) Aprobado(s) - SEIA"
+        # Obtener token
+        token = get_api_token(config)
+        if not token:
+            logger.error("No se pudo obtener token de autenticación")
+            return False
         
         # Crear cuerpo HTML
         timestamp = datetime.now()
         html_body = create_email_body(proyectos_nuevos, timestamp)
+        subject = f"🎉 {len(proyectos_nuevos)} Nuevo(s) Proyecto(s) Aprobado(s) - SEIA"
         
-        # Crear parte texto plano (fallback)
-        text_body = f"""
-Nuevos Proyectos Aprobados - SEIA
-
-Se detectaron {len(proyectos_nuevos)} nuevo(s) proyecto(s) aprobado(s)
-Fecha: {timestamp.strftime('%d/%m/%Y %H:%M:%S')}
-
-Proyectos:
-"""
-        for i, proyecto in enumerate(proyectos_nuevos, 1):
-            text_body += f"\n{i}. {proyecto.nombre_proyecto}\n"
-            text_body += f"   - Titular: {proyecto.titular or 'N/A'}\n"
-            text_body += f"   - Región: {proyecto.region or 'N/A'}\n"
-            text_body += f"   - Estado: {proyecto.estado}\n"
+        # Enviar a cada destinatario
+        recipients = [email.strip() for email in config.EMAIL_TO.split(",")]
+        all_success = True
         
-        # Adjuntar ambas partes
-        part1 = MIMEText(text_body, 'plain', 'utf-8')
-        part2 = MIMEText(html_body, 'html', 'utf-8')
-        msg.attach(part1)
-        msg.attach(part2)
-        
-        # Conectar y enviar
-        logger.info(f"Conectando a servidor SMTP: {config.EMAIL_HOST}:{config.EMAIL_PORT}")
-        
-        with smtplib.SMTP(config.EMAIL_HOST, config.EMAIL_PORT, timeout=30) as server:
-            if config.EMAIL_USE_TLS:
-                logger.debug("Iniciando TLS")
-                server.starttls()
+        for recipient in recipients:
+            if not recipient:
+                continue
             
-            # Autenticación (solo si se proporciona password)
-            if config.EMAIL_PASSWORD:
-                logger.debug(f"Autenticando como {config.EMAIL_USER}")
-                server.login(config.EMAIL_USER, config.EMAIL_PASSWORD)
+            success = send_email_via_api(
+                to_address=recipient,
+                subject=subject,
+                html_body=html_body,
+                token=token,
+                config=config
+            )
             
-            # Enviar
-            logger.info(f"Enviando email a: {config.EMAIL_TO}")
-            server.send_message(msg)
+            if not success:
+                all_success = False
         
-        logger.info(f"✓ Email enviado exitosamente con {len(proyectos_nuevos)} proyecto(s)")
-        return True
+        if all_success:
+            logger.info(f"✓ Emails enviados exitosamente a {len(recipients)} destinatario(s) con {len(proyectos_nuevos)} proyecto(s)")
+            return True
+        else:
+            logger.warning("⚠ Algunos emails no se pudieron enviar")
+            return False
         
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"Error de autenticación SMTP: {e}")
-        return False
-    except smtplib.SMTPException as e:
-        logger.error(f"Error SMTP: {e}")
-        return False
     except Exception as e:
         logger.error(f"Error enviando email: {e}")
         return False
+
+
+
+
 

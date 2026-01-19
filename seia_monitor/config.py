@@ -24,14 +24,11 @@ class Config:
     )
     SCRAPE_MODE: str = os.getenv("SCRAPE_MODE", "auto")  # auto|requests|playwright
     
-    # Email Notification
+    # Email Notification via Bye.cl API
     EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "true").lower() == "true"
-    EMAIL_HOST: str = os.getenv("EMAIL_HOST", "")
-    EMAIL_PORT: int = int(os.getenv("EMAIL_PORT", "25"))
-    EMAIL_USE_TLS: bool = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
-    EMAIL_USER: str = os.getenv("EMAIL_USER", "")
-    EMAIL_PASSWORD: str = os.getenv("EMAIL_PASSWORD", "")
-    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "") or os.getenv("EMAIL_USER", "")
+    EMAIL_API_BASE_URL: str = os.getenv("EMAIL_API_BASE_URL", "https://app.bye.cl/api")
+    EMAIL_API_USER: str = os.getenv("EMAIL_API_USER", "")
+    EMAIL_API_PASSWORD: str = os.getenv("EMAIL_API_PASSWORD", "")
     EMAIL_TO: str = os.getenv("EMAIL_TO", "")
     
     # Database
@@ -74,8 +71,13 @@ class Config:
         if cls.SCRAPE_MODE not in ["auto", "requests", "playwright"]:
             errors.append(f"SCRAPE_MODE inválido: {cls.SCRAPE_MODE}")
             
-        if cls.EMAIL_ENABLED and not cls.EMAIL_HOST:
-            errors.append("EMAIL_HOST es requerido cuando EMAIL_ENABLED=true")
+        if cls.EMAIL_ENABLED:
+            if not cls.EMAIL_API_BASE_URL:
+                errors.append("EMAIL_API_BASE_URL es requerido cuando EMAIL_ENABLED=true")
+            if not cls.EMAIL_API_USER or not cls.EMAIL_API_PASSWORD:
+                errors.append("EMAIL_API_USER y EMAIL_API_PASSWORD son requeridos cuando EMAIL_ENABLED=true")
+            if not cls.EMAIL_TO:
+                errors.append("EMAIL_TO es requerido cuando EMAIL_ENABLED=true")
             
         if cls.MAX_PAGES < 1:
             errors.append("MAX_PAGES debe ser >= 1")
