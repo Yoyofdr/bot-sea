@@ -63,13 +63,28 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
     Crea el cuerpo del email en HTML.
     
     Args:
-        proyectos_nuevos: Lista de proyectos nuevos aprobados
+        proyectos_nuevos: Lista de proyectos nuevos aprobados (puede estar vacía)
         timestamp: Timestamp de la corrida
     
     Returns:
         HTML completo del email
     """
+    tiene_proyectos = len(proyectos_nuevos) > 0
+    
     # Header
+    if tiene_proyectos:
+        header_title = "🎉 Nuevos Proyectos Aprobados - SEIA"
+        header_color = "#2563eb"
+        summary_bg = "#dbeafe"
+        summary_border = "#2563eb"
+        summary_text = f"Se detectaron <strong>{len(proyectos_nuevos)}</strong> nuevo(s) proyecto(s) aprobado(s)"
+    else:
+        header_title = "✅ Monitoreo SEIA - Sin Cambios"
+        header_color = "#059669"
+        summary_bg = "#d1fae5"
+        summary_border = "#059669"
+        summary_text = "No se detectaron proyectos aprobados nuevos"
+    
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -78,28 +93,35 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }}
             .container {{ max-width: 800px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; }}
+            .header {{ background: linear-gradient(135deg, {header_color} 0%, #1e40af 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; }}
             .footer {{ margin-top: 32px; padding: 16px; background-color: #f3f4f6; border-radius: 8px; text-align: center; font-size: 12px; color: #6b7280; }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1 style="margin: 0 0 8px 0; font-size: 28px;">🎉 Nuevos Proyectos Aprobados - SEIA</h1>
+                <h1 style="margin: 0 0 8px 0; font-size: 28px;">{header_title}</h1>
                 <p style="margin: 0; opacity: 0.9;">Monitoreo automático del Sistema de Evaluación de Impacto Ambiental</p>
             </div>
             
-            <div style="background-color: #dbeafe; border-left: 4px solid #2563eb; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
-                <p style="margin: 0;"><strong>📊 Resumen:</strong> Se detectaron <strong>{len(proyectos_nuevos)}</strong> nuevo(s) proyecto(s) aprobado(s)</p>
+            <div style="background-color: {summary_bg}; border-left: 4px solid {summary_border}; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+                <p style="margin: 0;"><strong>📊 Resumen:</strong> {summary_text}</p>
                 <p style="margin: 8px 0 0 0; font-size: 14px; color: #1e40af;">Fecha: {timestamp.strftime('%d/%m/%Y %H:%M:%S')}</p>
             </div>
-            
-            <h2 style="color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Proyectos Detectados</h2>
     """
     
-    # Proyectos
-    for proyecto in proyectos_nuevos:
-        html += format_project_html(proyecto)
+    if tiene_proyectos:
+        html += '<h2 style="color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">Proyectos Detectados</h2>'
+        # Proyectos
+        for proyecto in proyectos_nuevos:
+            html += format_project_html(proyecto)
+    else:
+        html += """
+            <div style="padding: 24px; text-align: center; color: #6b7280;">
+                <p style="font-size: 16px; margin: 0;">El sistema ha verificado la página del SEIA correctamente.</p>
+                <p style="font-size: 14px; margin: 8px 0 0 0;">No hay proyectos aprobados nuevos desde la última verificación.</p>
+            </div>
+        """
     
     # Footer
     html += f"""
@@ -233,10 +255,6 @@ def send_email_notification(
         logger.warning("EMAIL_TO no configurado")
         return False
     
-    if not proyectos_nuevos:
-        logger.info("No hay proyectos nuevos para notificar")
-        return True
-    
     try:
         # Obtener token
         token = get_api_token(config)
@@ -244,10 +262,14 @@ def send_email_notification(
             logger.error("No se pudo obtener token de autenticación")
             return False
         
-        # Crear cuerpo HTML
+        # Crear cuerpo HTML y subject
         timestamp = datetime.now()
         html_body = create_email_body(proyectos_nuevos, timestamp)
-        subject = f"🎉 {len(proyectos_nuevos)} Nuevo(s) Proyecto(s) Aprobado(s) - SEIA"
+        
+        if proyectos_nuevos:
+            subject = f"🎉 {len(proyectos_nuevos)} Nuevo(s) Proyecto(s) Aprobado(s) - SEIA"
+        else:
+            subject = "✅ Monitoreo SEIA - Sin Cambios"
         
         # Enviar a cada destinatario
         recipients = [email.strip() for email in config.EMAIL_TO.split(",")]
@@ -269,7 +291,10 @@ def send_email_notification(
                 all_success = False
         
         if all_success:
-            logger.info(f"✓ Emails enviados exitosamente a {len(recipients)} destinatario(s) con {len(proyectos_nuevos)} proyecto(s)")
+            if proyectos_nuevos:
+                logger.info(f"✓ Emails enviados exitosamente a {len(recipients)} destinatario(s) con {len(proyectos_nuevos)} proyecto(s)")
+            else:
+                logger.info(f"✓ Emails de confirmación enviados exitosamente a {len(recipients)} destinatario(s) (sin proyectos nuevos)")
             return True
         else:
             logger.warning("⚠ Algunos emails no se pudieron enviar")

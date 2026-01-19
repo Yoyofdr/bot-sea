@@ -184,10 +184,13 @@ class MonitoringRunner:
                 logger.info("Paso 4: Omitido (dry run)")
             
             # 5. NOTIFICAR POR EMAIL
-            if not dry_run and self.config.EMAIL_ENABLED and changes.nuevos:
+            if not dry_run and self.config.EMAIL_ENABLED:
                 logger.info("Paso 5: Enviando notificación por Email")
                 try:
-                    logger.info(f"Enviando {len(changes.nuevos)} proyecto(s) nuevo(s) por email")
+                    if changes.nuevos:
+                        logger.info(f"Enviando {len(changes.nuevos)} proyecto(s) nuevo(s) por email")
+                    else:
+                        logger.info("Enviando email de confirmación (sin proyectos nuevos)")
                     
                     notification_sent = send_email_notification(
                         changes.nuevos,
@@ -207,10 +210,8 @@ class MonitoringRunner:
             else:
                 if dry_run:
                     logger.info("Paso 5: Omitido (dry run)")
-                elif not self.config.EMAIL_ENABLED:
-                    logger.info("Paso 5: Omitido (no hay email configurado)")
                 else:
-                    logger.info("Paso 5: Omitido (no hay proyectos nuevos)")
+                    logger.info("Paso 5: Omitido (email no configurado)")
             
             # Corrida exitosa
             success = True
