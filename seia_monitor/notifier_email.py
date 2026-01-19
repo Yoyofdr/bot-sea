@@ -210,7 +210,7 @@ def send_email_via_api(
         }
         
         logger.debug(f"Enviando email a: {to_address}")
-        response = requests.get(send_url, params=payload, headers=headers, timeout=30)
+        response = requests.post(send_url, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
         
         logger.info(f"✓ Email enviado exitosamente a {to_address}")
