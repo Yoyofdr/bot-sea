@@ -24,6 +24,55 @@ def format_project_html(project: Project) -> str:
     Returns:
         HTML del proyecto
     """
+    details_html = ""
+    if project.details:
+        d = project.details
+        details_html = f"""
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ddd;">
+            
+            <!-- Resumen -->
+            <div style="margin-bottom: 12px;">
+                <h4 style="margin: 0 0 4px 0; color: #4b5563;">📝 Resumen del Proyecto</h4>
+                <p style="margin: 0; font-size: 13px; color: #666; line-height: 1.5; max-height: 200px; overflow-y: auto; white-space: pre-line;">
+                    {d.descripcion_completa or 'No disponible'}
+                </p>
+            </div>
+            
+            <!-- Inversión -->
+            <div style="margin-bottom: 12px;">
+                <h4 style="margin: 0 0 4px 0; color: #4b5563;">💰 Inversión</h4>
+                <p style="margin: 0; font-size: 14px; color: #333; font-weight: bold;">
+                    {d.monto_inversion or 'No disponible'}
+                </p>
+            </div>
+            
+            <!-- Contacto -->
+            <div>
+                <h4 style="margin: 0 0 4px 0; color: #4b5563;">👤 Contacto</h4>
+                <div style="background-color: #f0fdf4; padding: 10px; border-radius: 6px; font-size: 13px; border: 1px solid #bbf7d0;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td style="color: #666; width: 100px; padding: 2px 0;">Titular:</td>
+                            <td style="font-weight: 500;">{d.titular_nombre or 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #666; padding: 2px 0;">Email:</td>
+                            <td><a href="mailto:{d.titular_email}" style="color: #2563eb;">{d.titular_email or 'N/A'}</a></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #666; padding: 2px 0;">Rep. Legal:</td>
+                            <td>{d.rep_legal_nombre or 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #666; padding: 2px 0;">Email RL:</td>
+                            <td><a href="mailto:{d.rep_legal_email}" style="color: #2563eb;">{d.rep_legal_email or 'N/A'}</a></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        """
+
     return f"""
     <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
         <h3 style="color: #2563eb; margin-top: 0;">{project.nombre_proyecto}</h3>
@@ -53,6 +102,9 @@ def format_project_html(project: Project) -> str:
                 <td style="padding: 4px 0;"><span style="background-color: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{project.estado}</span></td>
             </tr>
         </table>
+        
+        {details_html}
+        
         {f'<p style="margin-top: 12px;"><a href="{project.url_detalle}" style="color: #2563eb; text-decoration: none;">Ver detalles del proyecto →</a></p>' if project.url_detalle else ''}
     </div>
     """

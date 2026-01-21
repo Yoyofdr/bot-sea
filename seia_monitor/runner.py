@@ -150,6 +150,30 @@ class MonitoringRunner:
                 
                 logger.info(f"✓ Detalles extraídos de {detalles_extraidos}/{len(changes.cambios_relevantes)} proyectos")
             
+            # 3.6. EXTRAER DETALLES DE PROYECTOS NUEVOS
+            if changes.nuevos:
+                logger.info("Paso 3.6: Extrayendo detalles de proyectos nuevos")
+                detalles_extraidos = 0
+                
+                for project in changes.nuevos:
+                    if project.url_detalle:
+                        try:
+                            logger.info(f"  Extrayendo detalles: {project.nombre_proyecto[:50]}...")
+                            details = scrape_project_details(project.url_detalle)
+                            project.details = details
+                            detalles_extraidos += 1
+                            logger.info(f"  ✓ Detalles extraídos: {project.nombre_proyecto[:50]}")
+                            
+                            # Pequeño delay
+                            time.sleep(2)
+                        
+                        except Exception as e:
+                            logger.error(
+                                f"  ✗ Error extrayendo detalles de {project.nombre_proyecto[:50]}: {e}"
+                            )
+                
+                logger.info(f"✓ Detalles extraídos de {detalles_extraidos}/{len(changes.nuevos)} proyectos nuevos")
+            
             # 4. GUARDAR A BASE DE DATOS
             if not dry_run:
                 logger.info("Paso 4: Guardando a base de datos")
@@ -170,6 +194,15 @@ class MonitoringRunner:
                                 detalles_guardados += 1
                             except Exception as e:
                                 logger.error(f"Error guardando detalles de {change.project_id}: {e}")
+                    
+                    # Guardar detalles de proyectos nuevos
+                    for project in changes.nuevos:
+                        if project.details:
+                            try:
+                                self.storage.save_project_details(project.details)
+                                detalles_guardados += 1
+                            except Exception as e:
+                                logger.error(f"Error guardando detalles de {project.project_id}: {e}")
                     
                     if detalles_guardados > 0:
                         logger.info(f"✓ Guardados detalles de {detalles_guardados} proyectos")

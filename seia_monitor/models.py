@@ -22,6 +22,7 @@ class Project:
     raw_row: Optional[str] = None
     first_seen: Optional[datetime] = None
     last_updated: Optional[datetime] = None
+    details: Optional['ProjectDetails'] = None  # Detalles adicionales scraping profundo
     
     def __hash__(self):
         return hash(self.project_id)
