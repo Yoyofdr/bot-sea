@@ -353,7 +353,19 @@ def scrape_project_details(url: str, retry_count: int = 2) -> ProjectDetails:
                 
                 # PASO 3: Ahora sí ir a la página de detalle
                 logger.info("  → Accediendo a detalles del proyecto...")
-                page.goto(url, wait_until='networkidle')
+                
+                # Intentar transformar a URL de ficha principal si tenemos ID
+                # Esta página es mucho más robusta y contiene toda la info de contacto
+                detail_url = url
+                if 'id_expediente=' in url:
+                    try:
+                        project_id_raw = url.split('id_expediente=')[1].split('&')[0]
+                        detail_url = f"https://seia.sea.gob.cl/expediente/ficha/fichaPrincipal.php?modo=normal&id_expediente={project_id_raw}"
+                        logger.info(f"  → Usando URL de ficha principal: {detail_url}")
+                    except Exception:
+                        pass
+
+                page.goto(detail_url, wait_until='networkidle')
                 
                 # Simular comportamiento humano: scroll aleatorio
                 time.sleep(random.uniform(1, 2))

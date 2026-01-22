@@ -169,10 +169,12 @@ class MonitoringRunner:
                         
                         except Exception as e:
                             logger.error(
-                                f"  ✗ Error extrayendo detalles de {project.nombre_proyecto[:50]}: {e}"
+                                f"  ✗ Error extrayendo detalles de '{project.nombre_proyecto[:30]}...': {e}"
                             )
+                            # Asegurar que details sea None en caso de error
+                            project.details = None
                 
-                logger.info(f"✓ Detalles extraídos de {detalles_extraidos}/{len(changes.nuevos)} proyectos nuevos")
+                logger.info(f"✓ Proceso de extracción finalizado: {detalles_extraidos}/{len(changes.nuevos)} con detalles")
             
             # 4. GUARDAR A BASE DE DATOS
             if not dry_run:

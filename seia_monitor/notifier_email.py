@@ -27,45 +27,55 @@ def format_project_html(project: Project) -> str:
     details_html = ""
     if project.details:
         d = project.details
+        
+        # Preparar secciones solo si tienen contenido
+        resumen = d.descripcion_completa or 'Resumen no disponible para este proyecto.'
+        monto = d.monto_inversion or 'No especificado'
+        
+        titular_n = d.titular_nombre or 'No disponible'
+        titular_e = d.titular_email or 'N/A'
+        rep_n = d.rep_legal_nombre or 'No disponible'
+        rep_e = d.rep_legal_email or 'N/A'
+
         details_html = f"""
-        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ddd;">
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #2563eb;">
             
             <!-- Resumen -->
             <div style="margin-bottom: 12px;">
-                <h4 style="margin: 0 0 4px 0; color: #4b5563;">📝 Resumen del Proyecto</h4>
-                <p style="margin: 0; font-size: 13px; color: #666; line-height: 1.5; max-height: 200px; overflow-y: auto; white-space: pre-line;">
-                    {d.descripcion_completa or 'No disponible'}
+                <h4 style="margin: 0 0 4px 0; color: #1e40af; font-size: 14px;">📝 Resumen del Proyecto</h4>
+                <p style="margin: 0; font-size: 13px; color: #444; line-height: 1.5; max-height: 250px; overflow-y: auto; white-space: pre-line; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #e5e7eb;">
+                    {resumen}
                 </p>
             </div>
             
             <!-- Inversión -->
             <div style="margin-bottom: 12px;">
-                <h4 style="margin: 0 0 4px 0; color: #4b5563;">💰 Inversión</h4>
-                <p style="margin: 0; font-size: 14px; color: #333; font-weight: bold;">
-                    {d.monto_inversion or 'No disponible'}
+                <h4 style="margin: 0 0 4px 0; color: #1e40af; font-size: 14px;">💰 Inversión</h4>
+                <p style="margin: 0; font-size: 15px; color: #059669; font-weight: bold;">
+                    {monto}
                 </p>
             </div>
             
             <!-- Contacto -->
             <div>
-                <h4 style="margin: 0 0 4px 0; color: #4b5563;">👤 Contacto</h4>
-                <div style="background-color: #f0fdf4; padding: 10px; border-radius: 6px; font-size: 13px; border: 1px solid #bbf7d0;">
-                    <table style="width: 100%;">
+                <h4 style="margin: 0 0 4px 0; color: #1e40af; font-size: 14px;">👤 Información de Contacto</h4>
+                <div style="background-color: #f8fafc; padding: 12px; border-radius: 6px; font-size: 13px; border: 1px solid #e2e8f0;">
+                    <table style="width: 100%; border-collapse: collapse;">
                         <tr>
-                            <td style="color: #666; width: 100px; padding: 2px 0;">Titular:</td>
-                            <td style="font-weight: 500;">{d.titular_nombre or 'N/A'}</td>
+                            <td style="color: #64748b; width: 100px; padding: 4px 0;"><strong>Titular:</strong></td>
+                            <td style="font-weight: 500; color: #334155;">{titular_n}</td>
                         </tr>
                         <tr>
-                            <td style="color: #666; padding: 2px 0;">Email:</td>
-                            <td><a href="mailto:{d.titular_email}" style="color: #2563eb;">{d.titular_email or 'N/A'}</a></td>
+                            <td style="color: #64748b; padding: 4px 0;"><strong>Email:</strong></td>
+                            <td><a href="mailto:{titular_e}" style="color: #2563eb; text-decoration: underline;">{titular_e}</a></td>
+                        </tr>
+                        <tr style="border-top: 1px solid #f1f5f9;">
+                            <td style="color: #64748b; padding: 4px 0; padding-top: 8px;"><strong>Rep. Legal:</strong></td>
+                            <td style="font-weight: 500; color: #334155; padding-top: 8px;">{rep_n}</td>
                         </tr>
                         <tr>
-                            <td style="color: #666; padding: 2px 0;">Rep. Legal:</td>
-                            <td>{d.rep_legal_nombre or 'N/A'}</td>
-                        </tr>
-                        <tr>
-                            <td style="color: #666; padding: 2px 0;">Email RL:</td>
-                            <td><a href="mailto:{d.rep_legal_email}" style="color: #2563eb;">{d.rep_legal_email or 'N/A'}</a></td>
+                            <td style="color: #64748b; padding: 4px 0;"><strong>Email RL:</strong></td>
+                            <td><a href="mailto:{rep_e}" style="color: #2563eb; text-decoration: underline;">{rep_e}</a></td>
                         </tr>
                     </table>
                 </div>
@@ -74,38 +84,40 @@ def format_project_html(project: Project) -> str:
         """
 
     return f"""
-    <div style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 12px 0; background-color: #f9f9f9;">
-        <h3 style="color: #2563eb; margin-top: 0;">{project.nombre_proyecto}</h3>
-        <table style="width: 100%; border-collapse: collapse;">
+    <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin: 16px 0; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 16px; border-bottom: 2px solid #f3f4f6; padding-bottom: 8px;">{project.nombre_proyecto}</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr>
-                <td style="padding: 4px 0; color: #666; width: 150px;"><strong>ID:</strong></td>
-                <td style="padding: 4px 0;">{project.project_id}</td>
+                <td style="padding: 6px 0; color: #6b7280; width: 140px;"><strong>ID Proyecto:</strong></td>
+                <td style="padding: 6px 0; color: #111827; font-family: monospace;">{project.project_id}</td>
             </tr>
             <tr>
-                <td style="padding: 4px 0; color: #666;"><strong>Titular:</strong></td>
-                <td style="padding: 4px 0;">{project.titular or 'N/A'}</td>
+                <td style="padding: 6px 0; color: #6b7280;"><strong>Titular:</strong></td>
+                <td style="padding: 6px 0; color: #111827;">{project.titular or 'N/A'}</td>
             </tr>
             <tr>
-                <td style="padding: 4px 0; color: #666;"><strong>Región:</strong></td>
-                <td style="padding: 4px 0;">{project.region or 'N/A'}</td>
+                <td style="padding: 6px 0; color: #6b7280;"><strong>Región:</strong></td>
+                <td style="padding: 6px 0; color: #111827;">{project.region or 'N/A'}</td>
             </tr>
             <tr>
-                <td style="padding: 4px 0; color: #666;"><strong>Tipo:</strong></td>
-                <td style="padding: 4px 0;">{project.tipo or 'N/A'}</td>
+                <td style="padding: 6px 0; color: #6b7280;"><strong>Tipo:</strong></td>
+                <td style="padding: 6px 0; color: #111827;"><span style="background-color: #f3f4f6; padding: 2px 6px; border-radius: 4px;">{project.tipo or 'N/A'}</span></td>
             </tr>
             <tr>
-                <td style="padding: 4px 0; color: #666;"><strong>Fecha Ingreso:</strong></td>
-                <td style="padding: 4px 0;">{project.fecha_ingreso or 'N/A'}</td>
+                <td style="padding: 6px 0; color: #6b7280;"><strong>Fecha Ingreso:</strong></td>
+                <td style="padding: 6px 0; color: #111827;">{project.fecha_ingreso or 'N/A'}</td>
             </tr>
             <tr>
-                <td style="padding: 4px 0; color: #666;"><strong>Estado:</strong></td>
-                <td style="padding: 4px 0;"><span style="background-color: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{project.estado}</span></td>
+                <td style="padding: 6px 0; color: #6b7280;"><strong>Estado:</strong></td>
+                <td style="padding: 6px 0;"><span style="background-color: #22c55e; color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase;">{project.estado}</span></td>
             </tr>
         </table>
         
         {details_html}
         
-        {f'<p style="margin-top: 12px;"><a href="{project.url_detalle}" style="color: #2563eb; text-decoration: none;">Ver detalles del proyecto →</a></p>' if project.url_detalle else ''}
+        <div style="margin-top: 20px; text-align: right;">
+            {f'<a href="{project.url_detalle}" style="display: inline-block; background-color: #2563eb; color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500;">Ver Ficha en SEIA →</a>' if project.url_detalle else ''}
+        </div>
     </div>
     """
 
