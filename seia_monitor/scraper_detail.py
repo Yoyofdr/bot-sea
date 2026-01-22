@@ -125,29 +125,35 @@ def _extract_description(soup: BeautifulSoup) -> Optional[str]:
         La descripción completa o None si no se encuentra
     """
     try:
-        # Estrategia SEIA: buscar div con clase sg-description-file
+        # Estrategia 1: buscar div con clase sg-description-file (Ficha Principal)
         desc_div = soup.find('div', class_=lambda x: x and 'sg-description-file' in x)
         if desc_div:
-            # Limpiar y extraer texto
-            desc = desc_div.get_text(separator='\n', strip=True)
-            if len(desc) > 50:
+            # En Ficha Principal el texto está dentro de un div con padding o directamente
+            # Intentamos limpiar el texto manteniendo saltos de línea
+            desc = desc_div.get_text(separator=' ', strip=True)
+            if len(desc) > 20:
                 return desc
         
-        # Estrategia 2: Buscar por span "Descripción del Proyecto" y obtener el contenedor siguiente
+        # Estrategia 2: Buscar contenedor de texto que tenga "El proyecto consiste" o similar
+        # En la descripción del SEIA suele empezar así
+        content_divs = soup.find_all('div', style=lambda x: x and 'text-align: justify' in x)
+        for div in content_divs:
+            text = div.get_text(strip=True)
+            if len(text) > 100:
+                return text
+
+        # Estrategia 3: Buscar por span "Descripción del Proyecto" y obtener el contenido
         all_spans = soup.find_all('span')
         for span in all_spans:
             if 'descripci' in span.get_text(strip=True).lower() and 'proyecto' in span.get_text(strip=True).lower():
-                # Buscar el row parent y luego el div con la descripción
+                # En Ficha Principal el valor está en la misma fila o en el siguiente div
                 row = span.find_parent('div', class_='row')
                 if row:
-                    # Buscar el siguiente div en el mismo contenedor padre
-                    parent = row.parent
-                    if parent:
-                        desc_container = parent.find('div', class_=lambda x: x and 'sg-description-file' in x)
-                        if desc_container:
-                            desc = desc_container.get_text(separator='\n', strip=True)
-                            if len(desc) > 50:
-                                return desc
+                    value_div = row.find('div', class_=lambda x: x and 'col-md-9' in x)
+                    if value_div:
+                        desc = value_div.get_text(strip=True)
+                        if len(desc) > 20:
+                            return desc
         
     except Exception as e:
         logger.error(f"Error extrayendo descripción: {e}")
@@ -219,7 +225,12 @@ def _extract_contact_section(soup: BeautifulSoup, section_title: str) -> dict:
                 elif 'fax' in label:
                     contact_info['fax'] = value
                 elif 'email' in label or 'e-mail' in label or 'correo' in label:
-                    contact_info['email'] = value
+                    # Extraer el email del link si existe
+                    link = value_div.find('a')
+                    if link and 'mailto:' in link.get('href', ''):
+                        contact_info['email'] = link.get('href').replace('mailto:', '').strip()
+                    else:
+                        contact_info['email'] = value
     
     except Exception as e:
         logger.error(f"Error extrayendo sección '{section_title}': {e}")
