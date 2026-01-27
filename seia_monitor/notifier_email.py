@@ -192,6 +192,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
             <div class="footer">
                 <p style="margin: 0;">Este es un mensaje automático del sistema de monitoreo SEIA</p>
                 <p style="margin: 8px 0 0 0;">No responder a este correo</p>
+                <p style="margin: 8px 0 0 0; font-size: 10px; color: #9ca3af;">v2026.01.27.1</p>
             </div>
         </div>
     </body>
