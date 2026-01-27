@@ -378,19 +378,34 @@ def scrape_project_details(url: str, retry_count: int = 2) -> ProjectDetails:
 
                 page.goto(detail_url, wait_until='networkidle')
                 
+                # CRÍTICO: Esperar explícitamente a que aparezca contenido clave
+                # No confiar solo en networkidle ni en sleeps
+                try:
+                    logger.info("  → Esperando renderizado de contenido...")
+                    # Esperar por el título del proyecto o por la tabla de datos
+                    # Buscamos elementos que sabemos que existen en una ficha cargada
+                    page.wait_for_selector('h3, h1, .titulo_ja', timeout=15000)
+                    
+                    # Intentar esperar específicamente por la sección de inversión si es posible
+                    # Si no aparece, igual continuamos (puede que no tenga inversión)
+                    try:
+                        page.wait_for_selector('text="Inversión"', timeout=5000)
+                    except:
+                        pass
+                        
+                except Exception as e:
+                    logger.warning(f"  ⚠️ Timeout esperando selectores clave, continuando con lo que hay: {e}")
+
                 # Simular comportamiento humano: scroll aleatorio
                 time.sleep(random.uniform(1, 2))
                 page.evaluate('window.scrollTo(0, document.body.scrollHeight * 0.3)')
                 time.sleep(random.uniform(1, 2))
-                page.evaluate('window.scrollTo(0, document.body.scrollHeight * 0.6)')
-                time.sleep(random.uniform(0.5, 1))
-                page.evaluate('window.scrollTo(0, 0)')
                 
-                # Esperar que cargue el contenido dinámico con tiempo aleatorio más largo
-                time.sleep(random.uniform(3, 6))
-                
-                # Obtener HTML
+                # Obtener HTML final
                 html = page.content()
+                final_url = page.url
+                
+                logger.info(f"  → URL Final: {final_url}")
                 
                 # Cerrar browser
                 browser.close()
