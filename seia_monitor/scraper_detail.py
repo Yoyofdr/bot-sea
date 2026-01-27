@@ -193,22 +193,52 @@ def _extract_contact_section(soup: BeautifulSoup, section_title: str) -> dict:
                 break
         
         if not section_container:
+            # Estrategia de fallback: buscar 'h4' o 'strong' que contenga el título
+            for header in soup.find_all(['h4', 'strong', 'b']):
+                if section_title.lower() in header.get_text(strip=True).lower():
+                    section_container = header.find_parent('div')
+                    # Si el padre es muy pequeño, subir uno más
+                    if section_container and len(str(section_container)) < 500:
+                        section_container = section_container.find_parent('div')
+                    break
+        
+        if not section_container:
             logger.warning(f"No se encontró sección '{section_title}'")
             return contact_info
         
         # Buscar todos los campos usando la estructura Bootstrap de SEIA
-        # <div class="row">
-        #   <div class="col-md-3"><span>Label</span></div>
-        #   <div class="col-md-9"><h6>Valor</h6></div>
-        # </div>
+        # Y ser flexible con las clases (no solo col-md-3)
+        all_rows = section_container.find_all('div', class_=lambda x: x and 'row' in x)
         
-        all_rows = section_container.find_all('div', class_='row')
+        # Si no hay rows, buscar tablas
+        if not all_rows:
+            tables = section_container.find_all('table')
+            for table in tables:
+                rows = table.find_all('tr')
+                for tr in rows:
+                    cells = tr.find_all(['td', 'th'])
+                    if len(cells) >= 2:
+                        label = cells[0].get_text(strip=True).lower()
+                        value = cells[1].get_text(strip=True)
+                        
+                        # Mapear campo desde tabla
+                        if 'nombre' in label: contact_info['nombre'] = value
+                        elif 'domicilio' in label: contact_info['domicilio'] = value
+                        elif 'ciudad' in label: contact_info['ciudad'] = value
+                        elif 'tel' in label: contact_info['telefono'] = value
+                        elif 'fax' in label: contact_info['fax'] = value
+                        elif 'email' in label or 'e-mail' in label or 'correo' in label:
+                            link = cells[1].find('a')
+                            contact_info['email'] = link.get('href').replace('mailto:', '').strip() if link else value
+
+        # Procesar estructura de divs (rows)
         for row in all_rows:
-            # Buscar el label
-            label_div = row.find('div', class_=lambda x: x and 'col-md-3' in x)
-            value_div = row.find('div', class_=lambda x: x and 'col-md-9' in x)
-            
-            if label_div and value_div:
+            # Buscar el label (asumimos primera columna)
+            cols = row.find_all('div', recursive=False)
+            if len(cols) >= 2:
+                label_div = cols[0]
+                value_div = cols[1]
+                
                 label = label_div.get_text(strip=True).lower()
                 value_h6 = value_div.find('h6')
                 value = value_h6.get_text(strip=True) if value_h6 else value_div.get_text(strip=True)
