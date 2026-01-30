@@ -95,8 +95,8 @@ echo ""
 echo -e "${GREEN}[9/9] Configurando cron job...${NC}"
 
 # Crear entrada de cron
-# Crear entrada de cron (Lunes a Viernes a las 08:00 AM)
-CRON_CMD="0 8 * * 1-5 cd $PROJECT_DIR && $(which python3) -m seia_monitor run --once >> $PROJECT_DIR/logs/cron.log 2>&1"
+# Crear entrada de cron (Lunes a Viernes a las 11:00 AM Server / 08:00 AM Chile)
+CRON_CMD="0 11 * * 1-5 cd $PROJECT_DIR && $(which python3) -m seia_monitor run --once >> $PROJECT_DIR/logs/cron.log 2>&1"
 
 # Verificar si ya existe
 if crontab -l 2>/dev/null | grep -q "seia_monitor"; then
@@ -107,7 +107,7 @@ fi
 # Agregar nuevo cron
 (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab -
 
-echo "✅ Cron job configurado para ejecutarse de LUNES a VIERNES a las 08:00 AM"
+echo "✅ Cron job configurado para ejecutarse de LUNES a VIERNES a las 08:00 AM Chile (11:00 AM Server)"
 echo ""
 
 # RESUMEN FINAL
@@ -117,7 +117,7 @@ echo "✅ INSTALACIÓN COMPLETADA"
 echo "=========================================="
 echo ""
 echo "📁 Directorio: $PROJECT_DIR"
-echo "🕐 Cron: Lunes a Viernes a las 08:00 AM"
+echo "🕐 Cron: Lunes a Viernes a las 08:00 AM Chile"
 echo ""
 echo "📝 PRÓXIMOS PASOS:"
 echo ""
