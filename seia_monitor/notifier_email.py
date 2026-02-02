@@ -16,9 +16,9 @@ logger = get_logger("notifier_email")
 
 def format_project_html(project: Project) -> str:
     """
-    Formatea un proyecto como HTML para el email siguiendo el diseño ejecutivo minimalista.
+    Formatea un proyecto como HTML para el email siguiendo el diseño ejecutivo minimalista
+    y compatible con Outlook (basado en tablas).
     """
-    details_html = ""
     resumen = "Resumen no disponible para este proyecto."
     monto = "No especificado"
     titular_n = project.titular or 'N/A'
@@ -35,93 +35,192 @@ def format_project_html(project: Project) -> str:
         rep_n = d.rep_legal_nombre or rep_n
         rep_e = d.rep_legal_email or rep_e
 
+    url_ficha = project.url_detalle or '#'
+
     return f"""
-    <!-- Bloque de Proyecto -->
-    <div style="margin-bottom: 48px;">
-        <h1 style="font-size: 26px; font-weight: 800; color: #111827; margin: 0 0 24px 0; line-height: 1.2;">
-            {project.nombre_proyecto}
-        </h1>
-
-        <!-- Key Facts Card -->
-        <div style="background-color: #f9fafb; border-radius: 6px; padding: 20px; margin-bottom: 24px;">
-            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <!-- INICIO BLOQUE PROYECTO -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0;">
                 <tr>
-                    <td valign="top" style="padding-bottom: 12px;">
-                        <span style="display: inline-block; background-color: #5FA91D; color: #ffffff; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">
+                  <td style="padding:0 0 24px 0; font-family:Arial, Helvetica, sans-serif;">
+                    <div style="font-size:26px; font-weight:800; color:#111827; line-height:1.2;">
+                      {project.nombre_proyecto}
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Key Facts Card (fondo gris) -->
+                <tr>
+                  <td bgcolor="#f9fafb" style="background-color:#f9fafb; padding:20px; border:1px solid #f3f4f6;">
+                    <!-- Badge -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td bgcolor="#5FA91D" style="background-color:#5FA91D; padding:4px 10px;">
+                          <div style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
                             {project.estado}
-                        </span>
-                    </td>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Spacer -->
+                    <div style="height:12px; line-height:12px; font-size:12px;">&nbsp;</div>
+
+                    <!-- Facts grid (2 columnas) -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td width="50%" valign="top" style="padding:0 8px 16px 0;">
+                          <div style="font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
+                            Monto Inversión
+                          </div>
+                          <div style="font-size:14px; color:#374151; padding-top:2px;">
+                            {monto}
+                          </div>
+                        </td>
+                        <td width="50%" valign="top" style="padding:0 0 16px 8px;">
+                          <div style="font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
+                            Región
+                          </div>
+                          <div style="font-size:14px; color:#374151; padding-top:2px;">
+                            {project.region or 'N/A'}
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td width="50%" valign="top" style="padding:0 8px 0 0;">
+                          <div style="font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
+                            Tipo
+                          </div>
+                          <div style="font-size:14px; color:#374151; padding-top:2px;">
+                            {project.tipo or 'N/A'}
+                          </div>
+                        </td>
+                        <td width="50%" valign="top" style="padding:0 0 0 8px;">
+                          <div style="font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
+                            Fecha Ingreso
+                          </div>
+                          <div style="font-size:14px; color:#374151; padding-top:2px;">
+                            {project.fecha_ingreso or 'N/A'}
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
                 </tr>
-            </table>
-            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top: 12px;">
+
+                <!-- Sección Resumen -->
                 <tr>
-                    <td width="50%" style="padding-bottom: 16px;">
-                        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Monto Inversión</div>
-                        <div style="font-size: 14px; color: #374151; padding-top: 2px;">{monto}</div>
-                    </td>
-                    <td width="50%" style="padding-bottom: 16px;">
-                        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Región</div>
-                        <div style="font-size: 14px; color: #374151; padding-top: 2px;">{project.region or 'N/A'}</div>
-                    </td>
+                  <td style="padding:32px 0 12px 0;">
+                    <div style="font-size:14px; font-weight:800; color:#4b5563; letter-spacing:0.10em; text-transform:uppercase; padding-bottom:6px; border-bottom:2px solid #f3f4f6; font-family:Arial, Helvetica, sans-serif;">
+                      Resumen del Proyecto
+                    </div>
+                  </td>
                 </tr>
                 <tr>
-                    <td width="50%">
-                        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Tipo</div>
-                        <div style="font-size: 14px; color: #374151; padding-top: 2px;">{project.tipo or 'N/A'}</div>
-                    </td>
-                    <td width="50%">
-                        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Fecha Ingreso</div>
-                        <div style="font-size: 14px; color: #374151; padding-top: 2px;">{project.fecha_ingreso or 'N/A'}</div>
-                    </td>
+                  <td style="padding:0 0 8px 0; font-family:Arial, Helvetica, sans-serif;">
+                    <div style="font-size:15px; color:#4b5563; white-space:pre-line;">
+                      {resumen}
+                    </div>
+                  </td>
                 </tr>
-            </table>
-        </div>
 
-        <!-- Summary -->
-        <h2 style="font-size: 14px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.1em; margin: 32px 0 12px 0; border-bottom: 2px solid #f3f4f6; padding-bottom: 6px;">
-            Resumen del Proyecto
-        </h2>
-        <div style="font-size: 15px; color: #4b5563; margin-bottom: 24px; white-space: pre-line;">
-            {resumen}
-        </div>
-
-        <!-- Contact -->
-        <h2 style="font-size: 14px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.1em; margin: 32px 0 12px 0; border-bottom: 2px solid #f3f4f6; padding-bottom: 6px;">
-            Información de Contacto
-        </h2>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr>
-                <td width="48%" valign="top">
-                    <div style="background-color: #ffffff; border: 1px solid #f3f4f6; border-radius: 6px; padding: 16px;">
-                        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 4px;">Titular</div>
-                        <div style="font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 2px;">{titular_n}</div>
-                        <a href="mailto:{titular_e}" style="font-size: 13px; color: #5FA91D; text-decoration: none;">{titular_e}</a>
+                <!-- Sección Contacto -->
+                <tr>
+                  <td style="padding:24px 0 12px 0;">
+                    <div style="font-size:14px; font-weight:800; color:#4b5563; letter-spacing:0.10em; text-transform:uppercase; padding-bottom:6px; border-bottom:2px solid #f3f4f6; font-family:Arial, Helvetica, sans-serif;">
+                      Información de Contacto
                     </div>
-                </td>
-                <td width="4%"></td>
-                <td width="48%" valign="top">
-                    <div style="background-color: #ffffff; border: 1px solid #f3f4f6; border-radius: 6px; padding: 16px;">
-                        <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 4px;">Rep. Legal</div>
-                        <div style="font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 2px;">{rep_n}</div>
-                        <a href="mailto:{rep_e}" style="font-size: 13px; color: #5FA91D; text-decoration: none;">{rep_e}</a>
-                    </div>
-                </td>
-            </tr>
-        </table>
+                  </td>
+                </tr>
 
-        <!-- CTA -->
-        <div style="margin-top: 40px; margin-bottom: 20px; text-align: center;">
-            <a href="{project.url_detalle or '#'}" style="display: inline-block; background-color: #5FA91D; color: #ffffff; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: bold;">
-                VER FICHA COMPLETA
-            </a>
-        </div>
-    </div>
+                <tr>
+                  <td style="padding:0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <!-- Titular -->
+                        <td width="48%" valign="top" style="padding:0;">
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                 style="border:1px solid #f3f4f6; background-color:#ffffff;">
+                            <tr>
+                              <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
+                                <div style="font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">
+                                  Titular
+                                </div>
+                                <div style="font-size:14px; font-weight:800; color:#111827; margin-bottom:2px;">
+                                  {titular_n}
+                                </div>
+                                <a href="mailto:{titular_e}" style="font-size:13px; color:#5FA91D; text-decoration:none;">
+                                  {titular_e}
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+
+                        <td width="4%">&nbsp;</td>
+
+                        <!-- Rep Legal -->
+                        <td width="48%" valign="top" style="padding:0;">
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                 style="border:1px solid #f3f4f6; background-color:#ffffff;">
+                            <tr>
+                              <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
+                                <div style="font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:4px;">
+                                  Rep. Legal
+                                </div>
+                                <div style="font-size:14px; font-weight:800; color:#111827; margin-bottom:2px;">
+                                  {rep_n}
+                                </div>
+                                <a href="mailto:{rep_e}" style="font-size:13px; color:#5FA91D; text-decoration:none;">
+                                  {rep_e}
+                                </a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- CTA -->
+                <tr>
+                  <td align="center" style="padding:40px 0 20px 0;">
+                    <!-- Botón bulletproof (Outlook VML) -->
+                    <!--[if mso]>
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{url_ficha}"
+                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#5FA91D" fillcolor="#5FA91D">
+                        <w:anchorlock/>
+                        <center style="color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:14px;font-weight:bold;">
+                          VER FICHA COMPLETA
+                        </center>
+                      </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-- -->
+                    <a href="{url_ficha}"
+                      style="display:inline-block; background-color:#5FA91D; border:1px solid #5FA91D; color:#ffffff;
+                             font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:800;
+                             text-decoration:none; padding:12px 32px; border-radius:6px;">
+                      VER FICHA COMPLETA
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+
+                <!-- Separador entre proyectos -->
+                <tr>
+                  <td style="padding:0 0 24px 0;">
+                    <div style="height:1px; background-color:#f3f4f6; line-height:1px; font-size:1px;">&nbsp;</div>
+                  </td>
+                </tr>
+              </table>
+              <!-- FIN BLOQUE PROYECTO -->
     """
 
 
 def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> str:
     """
-    Crea el cuerpo del email en HTML con diseño ejecutivo minimalista.
+    Crea el cuerpo del email en HTML con diseño ejecutivo minimalista y compatible con Outlook.
     """
     proyectos_html = ""
     for p in proyectos_nuevos:
@@ -129,7 +228,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
 
     if not proyectos_nuevos:
         proyectos_html = """
-        <div style="padding: 32px; text-align: center; color: #6b7280;">
+        <div style="padding: 32px; text-align: center; color: #6b7280; font-family: Arial, Helvetica, sans-serif;">
             <p style="font-size: 16px; margin: 0;">No se detectaron proyectos aprobados nuevos en esta revisión.</p>
         </div>
         """
@@ -140,24 +239,43 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <style type="text/css">
-        body {{ margin: 0; padding: 0; background-color: #f9fafb; font-family: Arial, Helvetica, sans-serif; color: #111827; line-height: 1.5; }}
-      </style>
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <title>SEIA - Novedades</title>
     </head>
-    <body>
-      <div style="max-width: 600px; margin: 40px auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-        <div style="padding: 32px;">
-          {proyectos_html}
-        </div>
-        <div style="padding: 32px; background-color: #f9fafb; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb;">
-          Este es un mensaje automático del sistema de monitoreo SEIA.<br>
-          No responder a este correo electrónico.<br>
-          <span style="font-size: 10px; margin-top: 8px; display: block;">v2026.01.30.1</span>
-        </div>
-      </div>
+    <body style="margin:0; padding:0; background-color:#f9fafb;">
+      <!-- Wrapper fondo -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="background-color:#f9fafb;">
+        <tr>
+          <td align="center" style="padding:24px 12px;">
+
+            <!-- Container 600 -->
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb;">
+              <tr>
+                <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#111827; line-height:1.5;">
+                  {proyectos_html}
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td bgcolor="#f9fafb" style="background-color:#f9fafb; padding:24px; text-align:center; border-top:1px solid #e5e7eb;
+                                           font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
+                  Este es un mensaje automático del sistema de monitoreo SEIA.<br>
+                  No responder a este correo electrónico.<br>
+                  <span style="font-size:10px; display:block; margin-top:8px;">v2026.02.02.1</span>
+                </td>
+              </tr>
+            </table>
+            <!-- /Container -->
+
+          </td>
+        </tr>
+      </table>
     </body>
     </html>
     """
+
 
 
 def get_api_token(config: Config) -> Optional[str]:
