@@ -49,6 +49,11 @@ class SEIAPlaywrightScraper:
         """
         Llena y envía el formulario de búsqueda de proyectos aprobados.
         
+        Flujo correcto:
+        1. Click en "Nueva Búsqueda" para mostrar el formulario
+        2. Seleccionar "Aprobado" (value=4) en projectStatus[]
+        3. Click en botón de búsqueda
+        
         Args:
             page: Página de Playwright
         
@@ -58,49 +63,44 @@ class SEIAPlaywrightScraper:
         try:
             # Esperar que cargue la página
             page.wait_for_load_state('domcontentloaded')
+            time.sleep(2)
             
-            # PASO 1: Buscar y seleccionar "Aprobado" en el dropdown de Estado
-            estado_selectors = [
-                'select[name="estadoProyecto"]',
-                'select[id="estadoProyecto"]',
-                'select[name="estado"]',
-                'select[id="estado"]',
-            ]
+            # PASO 1: Click en "Nueva Búsqueda" para mostrar el formulario
+            try:
+                logger.info("Haciendo click en 'Nueva Búsqueda'...")
+                page.click('button:has-text("Nueva Búsqueda")')
+                time.sleep(3)  # Esperar a que aparezca el formulario
+                logger.info("✓ Formulario de búsqueda desplegado")
+            except Exception as e:
+                logger.warning(f"No se pudo hacer click en 'Nueva Búsqueda': {e}")
+                logger.warning("Intentando continuar de todos modos...")
             
+            # PASO 2: Seleccionar "Aprobado" (value=4) en projectStatus[]
             estado_selected = False
-            for selector in estado_selectors:
-                try:
-                    estado_select = page.query_selector(selector)
-                    if estado_select:
-                        logger.debug(f"Dropdown estado encontrado: {selector}")
-                        # Intentar seleccionar "Aprobado" por valor o texto
-                        try:
-                            page.select_option(selector, label='Aprobado')
-                            logger.info("Estado 'Aprobado' seleccionado")
-                            estado_selected = True
-                            break
-                        except:
-                            try:
-                                page.select_option(selector, value='Aprobado')
-                                logger.info("Estado 'Aprobado' seleccionado")
-                                estado_selected = True
-                                break
-                            except:
-                                pass
-                except Exception as e:
-                    logger.debug(f"Selector {selector} no funcionó: {e}")
-                    continue
+            try:
+                # El selector correcto es projectStatus[] con value=4 para "Aprobado"
+                status_selector = 'select[name="projectStatus[]"]'
+                page.wait_for_selector(status_selector, timeout=5000)
+                page.select_option(status_selector, value='4')
+                logger.info("✓ Estado 'Aprobado' seleccionado (value=4)")
+                estado_selected = True
+            except Exception as e:
+                logger.warning(f"No se pudo seleccionar estado 'Aprobado': {e}")
+                logger.warning("Continuando de todos modos...")
             
             if not estado_selected:
-                logger.warning("No se pudo seleccionar estado 'Aprobado', continuando de todos modos")
+                logger.warning("⚠️ ADVERTENCIA: No se seleccionó filtro de Aprobado")
+                logger.warning("   Los resultados incluirán proyectos de todos los estados")
             
-            # PASO 2: Buscar y clickear botón de búsqueda
+            # PASO 3: Buscar y clickear botón de búsqueda
             submit_selectors = [
                 'button[type="submit"]',
                 'input[type="submit"]',
                 'button:has-text("Buscar")',
                 'button:has-text("Consultar")',
                 'input[value*="Buscar"]',
+                '#btnBuscar',
+                'input[id="btnBuscar"]',
             ]
             
             for selector in submit_selectors:
@@ -109,7 +109,7 @@ class SEIAPlaywrightScraper:
                     if button:
                         logger.debug(f"Botón submit encontrado: {selector}")
                         button.click()
-                        logger.info("Formulario enviado")
+                        logger.info("✓ Formulario enviado")
                         
                         # Esperar que carguen los resultados
                         page.wait_for_load_state('networkidle', timeout=30000)
