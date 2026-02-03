@@ -39,7 +39,7 @@ def format_project_html(project: Project) -> str:
 
     return f"""
               <!-- INICIO BLOQUE PROYECTO -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0; border-collapse:collapse;">
                 <tr>
                   <td style="padding:0 0 24px 0; font-family:Arial, Helvetica, sans-serif;">
                     <p style="margin:0; font-size:26px; font-weight:800; color:#111827; line-height:1.2;">
@@ -52,7 +52,7 @@ def format_project_html(project: Project) -> str:
                 <tr>
                   <td bgcolor="#f3f4f6" style="background-color:#f3f4f6; padding:20px; border:1px solid #e5e7eb;">
                     <!-- Badge con border real para Outlook -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                       <tr>
                         <td bgcolor="#5FA91D" style="background-color:#5FA91D; padding:4px 10px; border:1px solid #5FA91D; mso-line-height-rule:exactly;">
                           <span style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
@@ -62,11 +62,13 @@ def format_project_html(project: Project) -> str:
                       </tr>
                     </table>
 
-                    <!-- Spacer -->
-                    <div style="height:12px; line-height:12px; font-size:12px;">&nbsp;</div>
+                    <!-- Bulletproof Spacer -->
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr><td height="12" style="height:12px; line-height:12px; font-size:12px;">&nbsp;</td></tr>
+                    </table>
 
                     <!-- Facts grid (2 columnas) -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                       <tr>
                         <td width="50%" valign="top" style="padding:0 8px 16px 0; font-family:Arial, Helvetica, sans-serif;">
                           <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Monto Inversión</p>
@@ -118,12 +120,12 @@ def format_project_html(project: Project) -> str:
 
                 <tr>
                   <td style="padding:0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                       <tr>
                         <!-- Titular -->
                         <td width="48%" valign="top" style="padding:0;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                                 style="border:1px solid #e5e7eb; background-color:#ffffff;">
+                                 style="border:1px solid #e5e7eb; background-color:#ffffff; border-collapse:collapse;">
                             <tr>
                               <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
                                 <p style="margin:0 0 4px 0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
@@ -145,7 +147,7 @@ def format_project_html(project: Project) -> str:
                         <!-- Rep Legal -->
                         <td width="48%" valign="top" style="padding:0;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                                 style="border:1px solid #e5e7eb; background-color:#ffffff;">
+                                 style="border:1px solid #e5e7eb; background-color:#ffffff; border-collapse:collapse;">
                             <tr>
                               <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
                                 <p style="margin:0 0 4px 0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
@@ -192,7 +194,7 @@ def format_project_html(project: Project) -> str:
                 <!-- Separador entre proyectos -->
                 <tr>
                   <td style="padding:10px 0 40px 0;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                       <tr>
                         <td style="height:1px; background-color:#e5e7eb; line-height:1px; font-size:1px;">&nbsp;</td>
                       </tr>
@@ -214,7 +216,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
 
     if not proyectos_nuevos:
         proyectos_html = """
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
           <tr>
             <td style="padding:32px; text-align:center; font-family:Arial, Helvetica, sans-serif; color:#6b7280;">
               <p style="font-size:16px; margin:0;">No se detectaron proyectos aprobados nuevos en esta revisión.</p>
@@ -225,7 +227,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
 
     return f"""
     <!doctype html>
-    <html lang="es">
+    <html lang="es" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -234,18 +236,22 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
       <!--[if mso]>
       <style type="text/css">
         table, td, div, p, a, span {{ font-family: Arial, Helvetica, sans-serif !important; }}
+        table {{ border-collapse: collapse !important; }}
       </style>
       <![endif]-->
     </head>
     <body style="margin:0; padding:0; background-color:#f9fafb;">
-      <!-- Wrapper fondo -->
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="background-color:#f9fafb;">
         <tr>
           <td align="center" style="padding:24px 12px;">
 
-            <!-- Container 600 -->
+            <!--[if mso]>
+            <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0">
+              <tr><td>
+            <![endif]-->
+
             <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
-                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb;">
+                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb; border-collapse:collapse;">
               <tr>
                 <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#111827; line-height:1.5;">
                   {proyectos_html}
@@ -258,11 +264,15 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
                                            font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
                   <p style="margin:0 0 4px 0;">Este es un mensaje automático del sistema de monitoreo SEIA.</p>
                   <p style="margin:0 0 8px 0;">No responder a este correo electrónico.</p>
-                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.2</p>
+                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.3</p>
                 </td>
               </tr>
             </table>
-            <!-- /Container -->
+
+            <!--[if mso]>
+              </td></tr>
+            </table>
+            <![endif]-->
 
           </td>
         </tr>
