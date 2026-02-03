@@ -76,14 +76,20 @@ class SEIAPlaywrightScraper:
                 logger.warning("Intentando continuar de todos modos...")
             
             # PASO 2: Seleccionar "Aprobado" (value=4) en projectStatus[]
+            # Usamos JavaScript porque page.select_option() da timeout
             estado_selected = False
             try:
-                # El selector correcto es projectStatus[] con value=4 para "Aprobado"
-                status_selector = 'select[name="projectStatus[]"]'
-                page.wait_for_selector(status_selector, timeout=5000)
-                page.select_option(status_selector, value='4')
-                logger.info("✓ Estado 'Aprobado' seleccionado (value=4)")
+                logger.info("Seleccionando 'Aprobado' con JavaScript...")
+                result = page.evaluate("""() => {
+                    const select = document.querySelector('select[name="projectStatus[]"]');
+                    if (!select) return 'Selector no encontrado';
+                    select.value = '4';
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    return 'OK: ' + select.value;
+                }""")
+                logger.info(f"✓ Estado 'Aprobado' seleccionado via JS: {result}")
                 estado_selected = True
+                time.sleep(1)  # Dar tiempo para que el cambio se procese
             except Exception as e:
                 logger.warning(f"No se pudo seleccionar estado 'Aprobado': {e}")
                 logger.warning("Continuando de todos modos...")
