@@ -241,17 +241,43 @@ class SEIAPlaywrightScraper:
         
         with sync_playwright() as p:
             try:
-                # Lanzar navegador
+                # Lanzar navegador con configuración anti-WAF
                 browser = p.chromium.launch(
-                    headless=self.config.PLAYWRIGHT_HEADLESS
+                    headless=self.config.PLAYWRIGHT_HEADLESS,
+                    args=[
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-dev-shm-usage',
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-web-security',
+                        '--disable-features=IsolateOrigins,site-per-process'
+                    ]
                 )
                 
+                # Crear contexto con headers realistas para evadir WAF
                 context = browser.new_context(
-                    user_agent=self.config.USER_AGENT,
-                    viewport={'width': 1920, 'height': 1080}
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    viewport={'width': 1920, 'height': 1080},
+                    locale='es-CL',
+                    timezone_id='America/Santiago',
+                    extra_http_headers={
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'es-CL,es;q=0.9,en;q=0.8',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'DNT': '1',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
                 )
                 
                 page = context.new_page()
+                
+                # Inyectar script para ocultar webdriver
+                page.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                """)
                 
                 # Navegar a la página
                 logger.info(f"Navegando a {self.config.SEIA_BASE_URL}")
