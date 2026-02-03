@@ -3,6 +3,7 @@ Notificador por email para nuevos proyectos aprobados.
 Envía emails con formato HTML ejecutivo minimalista usando la API de Bye.cl.
 """
 
+import html
 import requests
 from datetime import datetime
 from typing import Optional
@@ -19,22 +20,37 @@ def format_project_html(project: Project) -> str:
     Formatea un proyecto como HTML para el email siguiendo el diseño ejecutivo minimalista
     y compatible con Outlook (basado en tablas y estilos robustos corrigiendo los últimos detalles).
     """
-    resumen = "Resumen no disponible para este proyecto."
+    # Escapado de HTML y manejo de datos nulos
+    nombre = html.escape(project.nombre_proyecto or 'Sin nombre')
+    region = html.escape(project.region or 'N/A')
+    tipo = html.escape(project.tipo or 'N/A')
+    fecha = html.escape(project.fecha_ingreso or 'N/A')
+    estado = html.escape(project.estado or 'N/A')
+    
+    resumen_raw = "Resumen no disponible para este proyecto."
     monto = "No especificado"
     titular_n = project.titular or 'N/A'
-    titular_e = 'N/A'
+    titular_e = 'no-disponible@seia.cl'
     rep_n = 'No disponible'
-    rep_e = 'N/A'
+    rep_e = 'no-disponible@seia.cl'
 
     if project.details:
         d = project.details
-        resumen = d.descripcion_completa or resumen
+        resumen_raw = d.descripcion_completa or resumen_raw
         monto = d.monto_inversion or monto
         titular_n = d.titular_nombre or titular_n
         titular_e = d.titular_email or titular_e
         rep_n = d.rep_legal_nombre or rep_n
         rep_e = d.rep_legal_email or rep_e
 
+    # Escaping y formateo de texto multiline
+    resumen = html.escape(resumen_raw).replace('\n', '<br>')
+    monto = html.escape(monto)
+    titular_n = html.escape(titular_n)
+    titular_e = html.escape(titular_e)
+    rep_n = html.escape(rep_n)
+    rep_e = html.escape(rep_e)
+    
     url_ficha = project.url_detalle or '#'
 
     return f"""
@@ -42,8 +58,8 @@ def format_project_html(project: Project) -> str:
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                 <tr>
                   <td style="padding:0 0 24px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:26px; font-weight:800; color:#111827; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;">
-                      {project.nombre_proyecto}
+                    <p style="margin:0; font-size:26px; font-weight:800; color:#111827; line-height:1.2; overflow-wrap:anywhere; word-break:normal;">
+                      {nombre}
                     </p>
                   </td>
                 </tr>
@@ -56,14 +72,14 @@ def format_project_html(project: Project) -> str:
                       <tr>
                         <td bgcolor="#5FA91D" style="background-color:#5FA91D; padding:4px 10px; border:1px solid #5FA91D; mso-line-height-rule:exactly;">
                           <span style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
-                            {project.estado}
+                            {estado}
                           </span>
                         </td>
                       </tr>
                     </table>
 
                     <!-- Bulletproof Spacer -->
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                       <tr><td height="12" style="height:12px; line-height:12px; font-size:12px;">&nbsp;</td></tr>
                     </table>
 
@@ -76,17 +92,17 @@ def format_project_html(project: Project) -> str:
                         </td>
                         <td width="50%" valign="top" style="padding:0; padding-left:8px; padding-bottom:16px; font-family:Arial, Helvetica, sans-serif;">
                           <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Región</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{project.region or 'N/A'}</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{region}</p>
                         </td>
                       </tr>
                       <tr>
                         <td width="50%" valign="top" style="padding:0; padding-right:8px; font-family:Arial, Helvetica, sans-serif;">
                           <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Tipo</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{project.tipo or 'N/A'}</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{tipo}</p>
                         </td>
                         <td width="50%" valign="top" style="padding:0; padding-left:8px; font-family:Arial, Helvetica, sans-serif;">
                           <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha Ingreso</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{project.fecha_ingreso or 'N/A'}</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{fecha}</p>
                         </td>
                       </tr>
                     </table>
@@ -103,7 +119,7 @@ def format_project_html(project: Project) -> str:
                 </tr>
                 <tr>
                   <td style="padding:0 0 8px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:15px; color:#4b5563; white-space:pre-line;">
+                    <p style="margin:0; font-size:15px; color:#4b5563;">
                       {resumen}
                     </p>
                   </td>
@@ -192,7 +208,7 @@ def format_project_html(project: Project) -> str:
                   </td>
                 </tr>
 
-                <!-- Separador entre proyectos -->
+                <!-- Separador entre proyectos (Auditoría v6) -->
                 <tr>
                   <td style="padding:10px 0 40px 0;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
@@ -274,7 +290,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
                                            font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
                   <p style="margin:0 0 4px 0;">Este es un mensaje automático del sistema de monitoreo SEIA.</p>
                   <p style="margin:0 0 8px 0;">No responder a este correo electrónico.</p>
-                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.5</p>
+                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.6</p>
                 </td>
               </tr>
             </table>
