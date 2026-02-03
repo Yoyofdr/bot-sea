@@ -42,7 +42,7 @@ def format_project_html(project: Project) -> str:
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                 <tr>
                   <td style="padding:0 0 24px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:26px; font-weight:800; color:#111827; line-height:1.2;">
+                    <p style="margin:0; font-size:26px; font-weight:800; color:#111827; line-height:1.2; word-break:break-word; overflow-wrap:anywhere;">
                       {project.nombre_proyecto}
                     </p>
                   </td>
@@ -184,7 +184,8 @@ def format_project_html(project: Project) -> str:
                     <a href="{url_ficha}"
                       style="display:inline-block; background-color:#5FA91D; border:1px solid #5FA91D; color:#ffffff;
                              font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:800;
-                             text-decoration:none; padding:12px 32px; border-radius:6px; mso-padding-alt:12px 32px;">
+                             text-decoration:none; padding:12px 32px; border-radius:6px; mso-padding-alt:12px 32px;
+                             line-height:14px; mso-line-height-rule:exactly;">
                       VER FICHA COMPLETA
                     </a>
                     <!--<![endif]-->
@@ -232,6 +233,9 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+      <meta name="color-scheme" content="light only">
+      <meta name="supported-color-schemes" content="light">
       <title>SEIA - Novedades</title>
       <!--[if mso]>
       <xml>
@@ -256,7 +260,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
               <tr><td>
             <![endif]-->
 
-            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+            <table role="presentation" width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0"
                    style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb; border-collapse:collapse; table-layout:fixed; mso-table-lspace:0pt; mso-table-rspace:0pt;">
               <tr>
                 <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#111827; line-height:1.5;">
@@ -270,7 +274,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
                                            font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
                   <p style="margin:0 0 4px 0;">Este es un mensaje automático del sistema de monitoreo SEIA.</p>
                   <p style="margin:0 0 8px 0;">No responder a este correo electrónico.</p>
-                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.4</p>
+                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.5</p>
                 </td>
               </tr>
             </table>
