@@ -25,7 +25,7 @@ class Config:
     SCRAPE_MODE: str = os.getenv("SCRAPE_MODE", "auto")  # auto|requests|playwright
     
     # Email Notification via Bye.cl API
-    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "true").lower() == "true"
+    EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "false").lower() == "true"
     EMAIL_API_BASE_URL: str = os.getenv("EMAIL_API_BASE_URL", "https://app.bye.cl/api")
     EMAIL_API_USER: str = os.getenv("EMAIL_API_USER", "")
     EMAIL_API_PASSWORD: str = os.getenv("EMAIL_API_PASSWORD", "")

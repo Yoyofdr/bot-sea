@@ -3,6 +3,7 @@ Orquestador principal del sistema de monitoreo SEIA.
 Coordina scraping, detección de cambios, persistencia y notificaciones.
 """
 
+import os
 import time
 from pathlib import Path
 from datetime import datetime
@@ -125,7 +126,9 @@ class MonitoringRunner:
                 changes = ChangeResult()
             
             # 3.5. EXTRAER DETALLES DE PROYECTOS APROBADOS
-            if changes.cambios_relevantes:
+            skip_details = os.getenv("SKIP_DETAILS", "true").lower() == "true"
+            
+            if changes.cambios_relevantes and not skip_details:
                 logger.info("Paso 3.5: Extrayendo detalles de proyectos aprobados")
                 detalles_extraidos = 0
                 
@@ -151,7 +154,7 @@ class MonitoringRunner:
                 logger.info(f"✓ Detalles extraídos de {detalles_extraidos}/{len(changes.cambios_relevantes)} proyectos")
             
             # 3.6. EXTRAER DETALLES DE PROYECTOS NUEVOS
-            if changes.nuevos:
+            if changes.nuevos and not skip_details:
                 logger.info("Paso 3.6: Extrayendo detalles de proyectos nuevos")
                 detalles_extraidos = 0
                 
