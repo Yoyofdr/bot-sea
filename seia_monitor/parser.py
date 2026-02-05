@@ -72,8 +72,10 @@ class ColumnMapper:
             
             # Fecha de ingreso
             elif fuzzy_match_column(header, ["fecha", "ingreso", "presentacion"]) and self.fecha_idx is None:
-                self.fecha_idx = idx
-                logger.debug(f"Columna 'fecha' mapeada a índice {idx}")
+                # Evitar "Razón de Ingreso" que a veces confunde al parser
+                if "razon" not in header_norm:
+                    self.fecha_idx = idx
+                    logger.debug(f"Columna 'fecha' mapeada a índice {idx}")
         
         # Validar que tenemos las columnas mínimas
         if self.nombre_idx is None:

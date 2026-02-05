@@ -126,7 +126,7 @@ class MonitoringRunner:
                 changes = ChangeResult()
             
             # 3.5. EXTRAER DETALLES DE PROYECTOS APROBADOS
-            skip_details = os.getenv("SKIP_DETAILS", "true").lower() == "true"
+            skip_details = os.getenv("SKIP_DETAILS", "false").lower() == "true"
             
             if changes.cambios_relevantes and not skip_details:
                 logger.info("Paso 3.5: Extrayendo detalles de proyectos aprobados")
