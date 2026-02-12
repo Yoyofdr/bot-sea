@@ -3,6 +3,7 @@ Capa de persistencia con SQLite.
 Maneja proyectos actuales, historial de cambios y estadísticas de corridas.
 """
 
+import re
 import sqlite3
 import json
 from pathlib import Path
@@ -95,6 +96,33 @@ class SEIAStorage:
                 )
             """)
             
+            # Tabla: monitor_state (máquina de estados)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS monitor_state (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Tabla: projects_staging (staging area para validación pre-commit)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS projects_staging (
+                    project_id TEXT PRIMARY KEY,
+                    nombre_proyecto TEXT NOT NULL,
+                    titular TEXT,
+                    region TEXT,
+                    tipo TEXT,
+                    fecha_ingreso TEXT,
+                    estado TEXT,
+                    estado_normalizado TEXT,
+                    url_detalle TEXT,
+                    raw_row TEXT,
+                    first_seen TIMESTAMP,
+                    last_updated TIMESTAMP
+                )
+            """)
+
             # Tabla: project_details (información detallada de proyectos aprobados)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS project_details (
@@ -470,10 +498,10 @@ class SEIAStorage:
     def get_project_details(self, project_id: str) -> Optional[ProjectDetails]:
         """
         Obtiene los detalles de un proyecto.
-        
+
         Args:
             project_id: ID del proyecto
-        
+
         Returns:
             ProjectDetails o None si no existen
         """
@@ -484,10 +512,10 @@ class SEIAStorage:
                 WHERE project_id = ?
             """, (project_id,))
             row = cursor.fetchone()
-            
+
             if not row:
                 return None
-            
+
             return ProjectDetails(
                 project_id=row['project_id'],
                 nombre_completo=row['nombre_completo'],
@@ -507,6 +535,197 @@ class SEIAStorage:
                 rep_legal_email=row['rep_legal_email'],
                 scraped_at=datetime.fromisoformat(row['scraped_at']) if row['scraped_at'] else None
             )
+
+    # ─── State Machine Methods ───────────────────────────────────────────
+
+    def _set_state(self, key: str, value: str) -> None:
+        """Upsert a key-value pair in monitor_state."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO monitor_state (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    updated_at = excluded.updated_at
+            """, (key, value, datetime.now().isoformat()))
+            conn.commit()
+
+    def get_monitor_mode(self) -> str:
+        """Retorna el modo actual: BOOTSTRAP, NORMAL o QUARANTINE. Default BOOTSTRAP."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM monitor_state WHERE key = 'mode'")
+            row = cursor.fetchone()
+            return row['value'] if row else 'BOOTSTRAP'
+
+    def set_monitor_mode(self, mode: str) -> None:
+        """Establece el modo del monitor."""
+        valid = ('BOOTSTRAP', 'NORMAL', 'QUARANTINE')
+        if mode not in valid:
+            raise ValueError(f"Modo invalido: {mode}. Debe ser uno de {valid}")
+        self._set_state('mode', mode)
+        logger.info(f"Monitor mode => {mode}")
+
+    def get_consecutive_stable_runs(self) -> int:
+        """Retorna el numero de corridas estables consecutivas."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM monitor_state WHERE key = 'consecutive_stable_runs'")
+            row = cursor.fetchone()
+            return int(row['value']) if row else 0
+
+    def set_consecutive_stable_runs(self, count: int) -> None:
+        self._set_state('consecutive_stable_runs', str(count))
+
+    def get_all_state(self) -> dict:
+        """Retorna todas las claves de monitor_state como dict."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value, updated_at FROM monitor_state")
+            return {
+                row['key']: {'value': row['value'], 'updated_at': row['updated_at']}
+                for row in cursor.fetchall()
+            }
+
+    # ─── Staging Methods ─────────────────────────────────────────────────
+
+    def save_projects_to_staging(self, projects: list[Project]) -> None:
+        """Guarda proyectos en la tabla de staging (DELETE ALL + INSERT)."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("DELETE FROM projects_staging")
+                now = datetime.now().isoformat()
+                for project in projects:
+                    cursor.execute("""
+                        INSERT INTO projects_staging (
+                            project_id, nombre_proyecto, titular, region, tipo,
+                            fecha_ingreso, estado, estado_normalizado, url_detalle,
+                            raw_row, first_seen, last_updated
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        project.project_id, project.nombre_proyecto, project.titular,
+                        project.region, project.tipo, project.fecha_ingreso,
+                        project.estado, project.estado_normalizado, project.url_detalle,
+                        project.raw_row, now, now
+                    ))
+                conn.commit()
+                logger.info(f"Staging: {len(projects)} proyectos guardados")
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Error guardando en staging: {e}")
+                raise
+
+    def promote_staging_to_current(self) -> None:
+        """Promueve staging a current atomicamente. Preserva first_seen de registros existentes."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                # Obtener first_seen de registros existentes
+                cursor.execute("SELECT project_id, first_seen FROM projects_current")
+                existing_first_seen = {
+                    row['project_id']: row['first_seen']
+                    for row in cursor.fetchall()
+                }
+
+                # Limpiar current
+                cursor.execute("DELETE FROM projects_current")
+
+                # Copiar desde staging preservando first_seen
+                cursor.execute("SELECT * FROM projects_staging")
+                rows = cursor.fetchall()
+                for row in rows:
+                    first_seen = existing_first_seen.get(row['project_id'], row['first_seen'])
+                    cursor.execute("""
+                        INSERT INTO projects_current (
+                            project_id, nombre_proyecto, titular, region, tipo,
+                            fecha_ingreso, estado, estado_normalizado, url_detalle,
+                            raw_row, first_seen, last_updated
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        row['project_id'], row['nombre_proyecto'], row['titular'],
+                        row['region'], row['tipo'], row['fecha_ingreso'],
+                        row['estado'], row['estado_normalizado'], row['url_detalle'],
+                        row['raw_row'], first_seen, row['last_updated']
+                    ))
+
+                # Limpiar staging
+                cursor.execute("DELETE FROM projects_staging")
+                conn.commit()
+                logger.info(f"Staging promovido a current: {len(rows)} proyectos")
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Error promoviendo staging: {e}")
+                raise
+
+    def discard_staging(self) -> None:
+        """Descarta datos de staging sin afectar current."""
+        with self._get_connection() as conn:
+            conn.cursor().execute("DELETE FROM projects_staging")
+            conn.commit()
+            logger.info("Staging descartado")
+
+    # ─── Validation Methods ──────────────────────────────────────────────
+
+    def compute_stability_metrics(
+        self,
+        staging_projects: list[Project],
+        current_projects: list[Project]
+    ) -> dict:
+        """
+        Calcula metricas de estabilidad entre staging y current.
+
+        Retorna dict con intersection_ratio, count_ratio, is_stable.
+        """
+        staging_ids = {p.project_id for p in staging_projects}
+        current_ids = {p.project_id for p in current_projects}
+
+        if not current_ids:
+            return {
+                'intersection_ratio': 0.0,
+                'count_ratio': 0.0,
+                'is_stable': False,
+                'reason': 'no baseline',
+                'staging_count': len(staging_ids),
+                'current_count': 0,
+                'intersection_count': 0,
+            }
+
+        intersection = staging_ids & current_ids
+        intersection_ratio = len(intersection) / len(current_ids)
+        count_ratio = len(staging_ids) / len(current_ids)
+
+        is_stable = (
+            intersection_ratio >= Config.STABILITY_INTERSECTION_MIN
+            and Config.STABILITY_COUNT_RATIO_MIN <= count_ratio <= Config.STABILITY_COUNT_RATIO_MAX
+        )
+
+        return {
+            'intersection_ratio': intersection_ratio,
+            'count_ratio': count_ratio,
+            'is_stable': is_stable,
+            'staging_count': len(staging_ids),
+            'current_count': len(current_ids),
+            'intersection_count': len(intersection),
+        }
+
+    @staticmethod
+    def validate_project_id_schema(projects: list[Project]) -> bool:
+        """
+        Verifica que los project_id sigan el patron esperado seia_XXXXXXXXXX.
+
+        Retorna True si todos los IDs son validos, False si hay anomalias.
+        """
+        pattern = re.compile(r'^seia_\d{7,15}$')
+        invalid = [p.project_id for p in projects if not pattern.match(p.project_id)]
+        if invalid:
+            logger.warning(
+                "IDs con formato inesperado: %d de %d. Muestra: %s",
+                len(invalid), len(projects), invalid[:5]
+            )
+            return False
+        return True
 
 
 def clear_database(db_path: Optional[Path] = None) -> None:

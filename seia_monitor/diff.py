@@ -17,10 +17,11 @@ def detect_changes(
     current: list[Project]
 ) -> ChangeResult:
     """
-    Detecta proyectos nuevos entre dos snapshots.
+    Detecta proyectos nuevos aprobados entre dos snapshots.
     
-    Estrategia simplificada: Solo identifica proyectos aprobados que no existían
-    en el snapshot anterior. Ya no detectamos cambios de estado.
+    Estrategia simplificada: Solo identifica proyectos con estado normalizado
+    "aprobado" que no existían en el snapshot anterior. Ya no detectamos
+    cambios de estado.
     
     Args:
         previous: Lista de proyectos del snapshot anterior
@@ -35,9 +36,22 @@ def detect_changes(
     
     # Proyectos nuevos (están en current pero no en previous)
     new_ids = current_ids - previous_ids
-    nuevos = [p for p in current if p.project_id in new_ids]
+    nuevos = [
+        p for p in current
+        if p.project_id in new_ids and p.estado_normalizado == "aprobado"
+    ]
+    nuevos_descartados_no_aprobados = sum(
+        1
+        for p in current
+        if p.project_id in new_ids and p.estado_normalizado != "aprobado"
+    )
     
     logger.info(f"Detectados {len(nuevos)} proyectos aprobados nuevos")
+    if nuevos_descartados_no_aprobados:
+        logger.warning(
+            "Descartados %s proyectos nuevos no aprobados",
+            nuevos_descartados_no_aprobados
+        )
     
     # Proyectos eliminados (opcional, solo para logging)
     removed_ids = previous_ids - current_ids

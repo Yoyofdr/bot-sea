@@ -27,9 +27,10 @@ class Config:
     # Email Notification via Bye.cl API
     EMAIL_ENABLED: bool = os.getenv("EMAIL_ENABLED", "true").lower() == "true"
     EMAIL_API_BASE_URL: str = os.getenv("EMAIL_API_BASE_URL", "https://app.bye.cl/api")
-    EMAIL_API_USER: str = os.getenv("EMAIL_API_USER", "")
-    EMAIL_API_PASSWORD: str = os.getenv("EMAIL_API_PASSWORD", "")
+    EMAIL_API_USER: str = os.getenv("EMAIL_API_USER", "") or os.getenv("EMAIL_USER", "")
+    EMAIL_API_PASSWORD: str = os.getenv("EMAIL_API_PASSWORD", "") or os.getenv("EMAIL_PASSWORD", "")
     EMAIL_TO: str = os.getenv("EMAIL_TO", "rfernandezdelrio@bye.cl,rfernandezdelrio@uc.cl")
+    EMAIL_ALERT_TO: str = os.getenv("EMAIL_ALERT_TO", "rfernandezdelrio@bye.cl,cescobar@bye.cl")
     
     # Database
     DB_PATH: str = os.getenv("DB_PATH", "data/seia_monitor.db")
@@ -47,6 +48,18 @@ class Config:
     # Scheduler
     TIMEZONE: str = os.getenv("TIMEZONE", "America/Santiago")
     SCHEDULE_TIME: str = os.getenv("SCHEDULE_TIME", "08:00")
+
+    # Guardarraíles de calidad de datos
+    APPROVED_SAMPLE_SIZE: int = int(os.getenv("APPROVED_SAMPLE_SIZE", "20"))
+    APPROVED_MIN_RATIO: float = float(os.getenv("APPROVED_MIN_RATIO", "0.90"))
+    ALERT_NEW_APPROVED_THRESHOLD: int = int(os.getenv("ALERT_NEW_APPROVED_THRESHOLD", "20"))
+    EMAIL_ALERT_ON_ANOMALY: bool = os.getenv("EMAIL_ALERT_ON_ANOMALY", "true").lower() == "true"
+
+    # Bootstrap / State Machine
+    STABILITY_INTERSECTION_MIN: float = float(os.getenv("STABILITY_INTERSECTION_MIN", "0.80"))
+    STABILITY_COUNT_RATIO_MIN: float = float(os.getenv("STABILITY_COUNT_RATIO_MIN", "0.80"))
+    STABILITY_COUNT_RATIO_MAX: float = float(os.getenv("STABILITY_COUNT_RATIO_MAX", "1.20"))
+    BOOTSTRAP_STABLE_RUNS_REQUIRED: int = int(os.getenv("BOOTSTRAP_STABLE_RUNS_REQUIRED", "2"))
     
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

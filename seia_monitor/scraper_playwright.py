@@ -44,61 +44,159 @@ class SEIAPlaywrightScraper:
             logger.info(f"HTML guardado: {html_path}")
         except Exception as e:
             logger.error(f"Error guardando debug info: {e}")
+
+    def _validate_approved_consistency(self, projects: list[Project]) -> bool:
+        """
+        Valida que los resultados obtenidos correspondan mayoritariamente
+        a proyectos aprobados.
+        """
+        if not projects:
+            return False
+
+        sample_size = max(1, min(len(projects), self.config.APPROVED_SAMPLE_SIZE))
+        sample = projects[:sample_size]
+        approved_count = sum(1 for p in sample if p.estado_normalizado == "aprobado")
+        ratio = approved_count / sample_size
+
+        logger.info(
+            "Validación de consistencia (muestra): %s/%s aprobados (%.1f%%)",
+            approved_count,
+            sample_size,
+            ratio * 100
+        )
+
+        if ratio < self.config.APPROVED_MIN_RATIO:
+            logger.error(
+                "Muestra inconsistente: ratio de aprobados %.1f%% < umbral %.1f%%",
+                ratio * 100,
+                self.config.APPROVED_MIN_RATIO * 100
+            )
+            return False
+
+        return True
     
     def _fill_and_submit_form(self, page: Page) -> bool:
         """
         Llena y envía el formulario de búsqueda de proyectos aprobados.
-        
-        Flujo correcto:
-        1. Click en "Nueva Búsqueda" para mostrar el formulario
-        2. Seleccionar "Aprobado" (value=4) en projectStatus[]
-        3. Click en botón de búsqueda
-        
-        Args:
-            page: Página de Playwright
-        
+
+        Flujo:
+        1. Click en "Nueva Búsqueda" para mostrar el formulario (con reintentos)
+        2. Esperar a que el select aparezca en el DOM
+        3. Seleccionar "Aprobado" (value=4) con JS (con reintentos)
+        4. Click en botón de búsqueda
+        5. Verificar que los resultados reflejan el filtro
+
         Returns:
-            True si se envió exitosamente
+            True si se envió exitosamente, False si algo falla (aborta scraping)
         """
         try:
-            # Esperar que cargue la página
             page.wait_for_load_state('domcontentloaded')
             time.sleep(2)
-            
-            # PASO 1: Click en "Nueva Búsqueda" para mostrar el formulario
-            try:
-                logger.info("Haciendo click en 'Nueva Búsqueda'...")
-                page.click('button:has-text("Nueva Búsqueda")')
-                time.sleep(3)  # Esperar a que aparezca el formulario
-                logger.info("✓ Formulario de búsqueda desplegado")
-            except Exception as e:
-                logger.warning(f"No se pudo hacer click en 'Nueva Búsqueda': {e}")
-                logger.warning("Intentando continuar de todos modos...")
-            
-            # PASO 2: Seleccionar "Aprobado" (value=4) en projectStatus[]
-            # Usamos JavaScript porque page.select_option() da timeout
-            estado_selected = False
-            try:
-                logger.info("Seleccionando 'Aprobado' con JavaScript...")
-                result = page.evaluate("""() => {
-                    const select = document.querySelector('select[name="projectStatus[]"]');
-                    if (!select) return 'Selector no encontrado';
-                    select.value = '4';
-                    select.dispatchEvent(new Event('change', { bubbles: true }));
-                    return 'OK: ' + select.value;
+
+            # PASO 1: Click en "Nueva Búsqueda" (con reintentos y múltiples selectores)
+            nueva_busqueda_selectors = [
+                'button:has-text("Nueva Búsqueda")',
+                'button:has-text("Nueva Busqueda")',
+                'a:has-text("Nueva Búsqueda")',
+                'input[value*="Nueva"]',
+                '#nuevaBusqueda',
+                '.nueva-busqueda',
+            ]
+
+            form_opened = False
+            for attempt in range(3):
+                for selector in nueva_busqueda_selectors:
+                    try:
+                        el = page.query_selector(selector)
+                        if el:
+                            logger.info(f"Click en 'Nueva Búsqueda' (selector: {selector}, intento {attempt + 1})")
+                            el.click()
+                            time.sleep(3)
+                            form_opened = True
+                            break
+                    except Exception:
+                        continue
+                if form_opened:
+                    break
+                logger.warning(f"Intento {attempt + 1}/3: no se encontró 'Nueva Búsqueda', esperando...")
+                time.sleep(2)
+
+            if not form_opened:
+                logger.error("No se pudo abrir el formulario de búsqueda tras 3 intentos. Abortando.")
+                self._save_debug_info(page, "form_not_found")
+                return False
+
+            logger.info("Formulario de búsqueda desplegado")
+
+            # PASO 2: Esperar a que el <select> projectStatus[] aparezca en el DOM
+            select_visible = False
+            for wait in range(10):
+                exists = page.evaluate("""() => {
+                    const s = document.querySelector('select[name="projectStatus[]"]');
+                    return s !== null;
                 }""")
-                logger.info(f"✓ Estado 'Aprobado' seleccionado via JS: {result}")
-                estado_selected = True
-                time.sleep(1)  # Dar tiempo para que el cambio se procese
-            except Exception as e:
-                logger.warning(f"No se pudo seleccionar estado 'Aprobado': {e}")
-                logger.warning("Continuando de todos modos...")
-            
+                if exists:
+                    select_visible = True
+                    break
+                time.sleep(1)
+
+            if not select_visible:
+                logger.error("El select projectStatus[] no apareció en el DOM tras 10s. Abortando.")
+                self._save_debug_info(page, "select_not_found")
+                return False
+
+            # PASO 3: Seleccionar "Aprobado" (value=4) con reintentos
+            estado_selected = False
+            select_js = """() => {
+                const select = document.querySelector('select[name="projectStatus[]"]');
+                if (!select) {
+                    return { ok: false, error: 'Selector no encontrado' };
+                }
+                const option = select.querySelector('option[value="4"]');
+                if (!option) {
+                    return { ok: false, error: 'Opción value=4 no encontrada' };
+                }
+                for (const opt of select.options) {
+                    opt.selected = false;
+                }
+                option.selected = true;
+                select.value = '4';
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+
+                const selectedValues = Array.from(select.selectedOptions).map(o => o.value);
+                return {
+                    ok: selectedValues.includes('4'),
+                    selectedValues,
+                    selectedLabel: option.textContent ? option.textContent.trim() : ''
+                };
+            }"""
+
+            for attempt in range(3):
+                try:
+                    result = page.evaluate(select_js)
+                    if isinstance(result, dict) and result.get("ok"):
+                        logger.info(
+                            "Estado 'Aprobado' seleccionado (intento %d): values=%s, label='%s'",
+                            attempt + 1,
+                            result.get("selectedValues"),
+                            result.get("selectedLabel", "")
+                        )
+                        estado_selected = True
+                        time.sleep(1)
+                        break
+                    else:
+                        logger.warning(f"Intento {attempt + 1}/3 selección fallida: {result}")
+                except Exception as e:
+                    logger.warning(f"Intento {attempt + 1}/3 excepción seleccionando estado: {e}")
+                time.sleep(2)
+
             if not estado_selected:
-                logger.warning("⚠️ ADVERTENCIA: No se seleccionó filtro de Aprobado")
-                logger.warning("   Los resultados incluirán proyectos de todos los estados")
-            
-            # PASO 3: Buscar y clickear botón de búsqueda
+                logger.error("No se logró aplicar el filtro 'Aprobado' tras 3 intentos. Abortando.")
+                self._save_debug_info(page, "filter_failed")
+                return False
+
+            # PASO 4: Buscar y clickear botón de búsqueda
             submit_selectors = [
                 'button[type="submit"]',
                 'input[type="submit"]',
@@ -108,28 +206,31 @@ class SEIAPlaywrightScraper:
                 '#btnBuscar',
                 'input[id="btnBuscar"]',
             ]
-            
+
+            submitted = False
             for selector in submit_selectors:
                 try:
                     button = page.query_selector(selector)
                     if button:
                         logger.debug(f"Botón submit encontrado: {selector}")
                         button.click()
-                        logger.info("✓ Formulario enviado")
-                        
-                        # Esperar que carguen los resultados
+                        logger.info("Formulario enviado")
                         page.wait_for_load_state('networkidle', timeout=30000)
-                        return True
+                        submitted = True
+                        break
                 except PlaywrightTimeout:
-                    logger.warning("Timeout esperando resultados")
+                    logger.warning(f"Timeout esperando resultados con selector {selector}")
                 except Exception as e:
                     logger.debug(f"Selector {selector} no funcionó: {e}")
                     continue
-            
-            # Si no encontramos submit, tal vez ya están los resultados
-            logger.warning("No se encontró botón submit, verificando si ya hay resultados")
+
+            if not submitted:
+                logger.error("No se encontró botón submit. Abortando.")
+                self._save_debug_info(page, "no_submit_button")
+                return False
+
             return True
-        
+
         except Exception as e:
             logger.error(f"Error llenando formulario: {e}")
             return False
@@ -364,6 +465,11 @@ class SEIAPlaywrightScraper:
                     raise Exception("No se encontraron resultados en la página")
                 
                 projects = parse_projects_from_html(html)
+                if not self._validate_approved_consistency(projects):
+                    self._save_debug_info(page, "estado_inconsistente")
+                    raise Exception(
+                        "Resultados inconsistentes: el filtro de aprobados no se reflejó en la muestra"
+                    )
                 all_projects.extend(projects)
                 pages_scraped = 1
                 

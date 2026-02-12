@@ -390,3 +390,139 @@ def send_email_notification(proyectos_nuevos: list[Project], config: Optional[Co
     except Exception as e:
         logger.error(f"Error enviando email: {e}")
         return False
+
+
+def send_quarantine_alert_notification(
+    reason: str,
+    total_scraped: int,
+    stability_metrics: dict,
+    config: Optional[Config] = None
+) -> bool:
+    """
+    Envia alerta cuando el sistema entra en modo CUARENTENA.
+    """
+    if config is None:
+        config = Config()
+
+    if not config.EMAIL_ENABLED or not config.EMAIL_ALERT_ON_ANOMALY:
+        return False
+
+    alert_to = config.EMAIL_ALERT_TO or config.EMAIL_TO
+    if not config.EMAIL_API_BASE_URL or not config.EMAIL_API_USER or not config.EMAIL_API_PASSWORD or not alert_to:
+        logger.warning("Configuracion de email incompleta para alerta de cuarentena")
+        return False
+
+    try:
+        token = get_api_token(config)
+        if not token:
+            return False
+
+        intersection = stability_metrics.get('intersection_ratio', 0)
+        count_ratio = stability_metrics.get('count_ratio', 0)
+        staging_count = stability_metrics.get('staging_count', 'N/A')
+        current_count = stability_metrics.get('current_count', 'N/A')
+
+        subject = "ALERTA SEIA - Sistema en CUARENTENA"
+        html_body = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; color: #111827;">
+            <h2 style="color: #dc2626;">Sistema de Monitoreo SEIA - CUARENTENA</h2>
+            <p>El sistema ha entrado en modo <b>CUARENTENA</b> por la siguiente razon:</p>
+            <p style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 4px;">
+              <b>{html.escape(reason)}</b>
+            </p>
+            <h3>Metricas de estabilidad</h3>
+            <ul>
+              <li>Total scrapeado: <b>{total_scraped}</b></li>
+              <li>Proyectos en baseline: <b>{current_count}</b></li>
+              <li>Proyectos en staging: <b>{staging_count}</b></li>
+              <li>Ratio de interseccion: <b>{intersection:.1%}</b></li>
+              <li>Ratio de conteo: <b>{count_ratio:.1%}</b></li>
+            </ul>
+            <h3>Accion tomada</h3>
+            <p>La baseline <b>NO fue actualizada</b>. No se enviaran notificaciones normales hasta resolver.</p>
+            <h3>Como recuperar</h3>
+            <p>Ejecutar:</p>
+            <code style="background-color: #f3f4f6; padding: 8px 12px; display: block; border-radius: 4px;">
+              python -m seia_monitor bootstrap
+            </code>
+            <p style="margin-top: 12px; font-size: 12px; color: #6b7280;">
+              Esto reiniciara el proceso de establecimiento de baseline.
+              Se necesitan 2 corridas estables consecutivas para volver al modo NORMAL.
+            </p>
+          </body>
+        </html>
+        """
+
+        recipients = [email.strip() for email in alert_to.split(",")]
+        all_success = True
+
+        for recipient in recipients:
+            if recipient and not send_email_via_api(recipient, subject, html_body, token, config):
+                all_success = False
+
+        if all_success:
+            logger.info("Alerta de cuarentena enviada por email")
+        return all_success
+
+    except Exception as e:
+        logger.error(f"Error enviando alerta de cuarentena: {e}")
+        return False
+
+
+def send_anomaly_alert_notification(
+    nuevos_count: int,
+    total_scraped: int,
+    threshold: int,
+    config: Optional[Config] = None
+) -> bool:
+    """
+    Envía una alerta cuando se detecta un volumen anómalo de proyectos nuevos.
+    """
+    if config is None:
+        config = Config()
+
+    if not config.EMAIL_ENABLED or not config.EMAIL_ALERT_ON_ANOMALY:
+        return False
+
+    alert_to = config.EMAIL_ALERT_TO or config.EMAIL_TO
+    if not config.EMAIL_API_BASE_URL or not config.EMAIL_API_USER or not config.EMAIL_API_PASSWORD or not alert_to:
+        logger.warning("Configuración de email incompleta para alerta de anomalía")
+        return False
+
+    try:
+        token = get_api_token(config)
+        if not token:
+            return False
+
+        subject = f"ALERTA SEIA - Anomalía detectada ({nuevos_count} nuevos)"
+        html_body = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; color: #111827;">
+            <h2 style="margin-bottom: 8px;">Alerta de Anomalía - Monitoreo SEIA</h2>
+            <p>Se detectó una corrida con volumen inusual de proyectos aprobados nuevos.</p>
+            <ul>
+              <li>Nuevos detectados: <b>{nuevos_count}</b></li>
+              <li>Total scrapeado en corrida: <b>{total_scraped}</b></li>
+              <li>Umbral configurado: <b>{threshold}</b></li>
+            </ul>
+            <p>Acción tomada: se bloqueó el envío del correo normal para evitar falsos positivos masivos.</p>
+            <p>Revisar logs y archivos de debug para confirmar si hubo cambio de UI/filtro en SEIA.</p>
+          </body>
+        </html>
+        """
+
+        recipients = [email.strip() for email in alert_to.split(",")]
+        all_success = True
+
+        for recipient in recipients:
+            if recipient and not send_email_via_api(recipient, subject, html_body, token, config):
+                all_success = False
+
+        if all_success:
+            logger.info("✓ Alerta de anomalía enviada por email")
+        return all_success
+
+    except Exception as e:
+        logger.error(f"Error enviando alerta de anomalía: {e}")
+        return False
