@@ -369,9 +369,11 @@ class MonitoringRunner:
         # Leer y/o forzar modo
         current_mode = self.storage.get_monitor_mode()
         if force_bootstrap:
+            if current_mode != 'BOOTSTRAP':
+                # Solo resetear contador al entrar a BOOTSTRAP desde otro modo
+                self.storage.set_consecutive_stable_runs(0)
             current_mode = 'BOOTSTRAP'
             self.storage.set_monitor_mode('BOOTSTRAP')
-            self.storage.set_consecutive_stable_runs(0)
 
         logger.info("=" * 60)
         logger.info("Iniciando corrida de monitoreo SEIA")
