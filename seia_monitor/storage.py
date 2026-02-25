@@ -8,7 +8,7 @@ import sqlite3
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from seia_monitor.config import Config
 from seia_monitor.logger import get_logger
@@ -146,6 +146,52 @@ class SEIAStorage:
                     FOREIGN KEY (project_id) REFERENCES projects_current(project_id)
                 )
             """)
+
+            # Tabla: lawyers (catálogo de abogados)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS lawyers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre TEXT NOT NULL UNIQUE,
+                    email TEXT,
+                    active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Tabla: project_management (estado comercial interno)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS project_management (
+                    project_id TEXT PRIMARY KEY,
+                    pipeline_status TEXT NOT NULL DEFAULT 'contactado',
+                    responsable_lawyer_id INTEGER,
+                    prioridad TEXT NOT NULL DEFAULT 'media',
+                    proxima_accion_at TIMESTAMP,
+                    ultima_interaccion_at TIMESTAMP,
+                    probabilidad_cierre INTEGER,
+                    notas TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (project_id) REFERENCES projects_current(project_id),
+                    FOREIGN KEY (responsable_lawyer_id) REFERENCES lawyers(id),
+                    CHECK (pipeline_status IN ('contactado', 'en_conversaciones', 'fallido', 'completado')),
+                    CHECK (prioridad IN ('baja', 'media', 'alta')),
+                    CHECK (probabilidad_cierre IS NULL OR (probabilidad_cierre >= 0 AND probabilidad_cierre <= 100))
+                )
+            """)
+
+            # Tabla: project_activity (timeline interna)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS project_activity (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    project_id TEXT NOT NULL,
+                    activity_type TEXT NOT NULL DEFAULT 'nota',
+                    content TEXT NOT NULL,
+                    created_by TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (project_id) REFERENCES projects_current(project_id)
+                )
+            """)
             
             # Índices para mejorar performance
             cursor.execute("""
@@ -161,6 +207,21 @@ class SEIAStorage:
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_runs_timestamp 
                 ON runs(timestamp)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_management_status
+                ON project_management(pipeline_status)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_management_lawyer
+                ON project_management(responsable_lawyer_id)
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_activity_project
+                ON project_activity(project_id, created_at DESC)
             """)
             
             conn.commit()
@@ -403,6 +464,52 @@ class SEIAStorage:
                 success=bool(row['success']),
                 errors=errors
             )
+
+    def get_last_two_run_timestamps(self) -> tuple[Optional[datetime], Optional[datetime]]:
+        """
+        Retorna (previous_run_ts, latest_run_ts) para calcular novedades por corrida.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT timestamp
+                FROM runs
+                WHERE success = 1
+                ORDER BY timestamp DESC
+                LIMIT 2
+            """)
+            rows = cursor.fetchall()
+            if not rows:
+                return None, None
+            latest = datetime.fromisoformat(rows[0]["timestamp"])
+            previous = datetime.fromisoformat(rows[1]["timestamp"]) if len(rows) > 1 else None
+            return previous, latest
+
+    @staticmethod
+    def _parse_dt(value: Optional[str]) -> Optional[datetime]:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+
+    def _compute_is_new(self, first_seen: Optional[str]) -> bool:
+        """
+        Define si un proyecto es "nuevo" en la última corrida exitosa.
+        - Con 2 corridas: previous < first_seen <= latest
+        - Con 1 corrida: first_seen <= latest (bootstrapping inicial)
+        """
+        first_seen_dt = self._parse_dt(first_seen)
+        if not first_seen_dt:
+            return False
+
+        previous_run_ts, latest_run_ts = self.get_last_two_run_timestamps()
+        if not latest_run_ts:
+            return False
+        if previous_run_ts is None:
+            return first_seen_dt <= latest_run_ts
+        return previous_run_ts < first_seen_dt <= latest_run_ts
     
     def get_project_history(
         self,
@@ -665,6 +772,352 @@ class SEIAStorage:
             conn.cursor().execute("DELETE FROM projects_staging")
             conn.commit()
             logger.info("Staging descartado")
+
+    # ─── Panel Methods ───────────────────────────────────────────────────
+
+    def _ensure_management_record(self, project_id: str) -> None:
+        """Crea fila de gestión si no existe para el proyecto."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO project_management (project_id)
+                VALUES (?)
+            """, (project_id,))
+            conn.commit()
+
+    def upsert_lawyer(self, nombre: str, email: Optional[str] = None, active: bool = True) -> int:
+        """Crea o actualiza un abogado y retorna su ID."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute("""
+                INSERT INTO lawyers (nombre, email, active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(nombre) DO UPDATE SET
+                    email = excluded.email,
+                    active = excluded.active,
+                    updated_at = excluded.updated_at
+            """, (nombre, email, int(active), now, now))
+
+            cursor.execute("SELECT id FROM lawyers WHERE nombre = ?", (nombre,))
+            row = cursor.fetchone()
+            conn.commit()
+            return int(row["id"])
+
+    def get_lawyers(self, only_active: bool = True) -> list[dict[str, Any]]:
+        """Retorna abogados para selector de responsables."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if only_active:
+                cursor.execute("""
+                    SELECT id, nombre, email, active
+                    FROM lawyers
+                    WHERE active = 1
+                    ORDER BY nombre ASC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT id, nombre, email, active
+                    FROM lawyers
+                    ORDER BY nombre ASC
+                """)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    def list_projects_panel(
+        self,
+        search: Optional[str] = None,
+        region: Optional[str] = None,
+        pipeline_status: Optional[str] = None,
+        responsable_lawyer_id: Optional[int] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> list[dict[str, Any]]:
+        """Lista proyectos combinando datos SEIA y gestión interna."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT
+                    p.project_id,
+                    p.nombre_proyecto,
+                    p.titular,
+                    p.region,
+                    p.tipo,
+                    p.fecha_ingreso,
+                    p.estado,
+                    p.estado_normalizado,
+                    p.url_detalle,
+                    p.first_seen,
+                    p.last_updated,
+                    COALESCE(pm.pipeline_status, 'contactado') AS pipeline_status,
+                    pm.responsable_lawyer_id,
+                    pm.prioridad,
+                    pm.proxima_accion_at,
+                    pm.ultima_interaccion_at,
+                    pm.probabilidad_cierre,
+                    l.nombre AS responsable_lawyer_nombre
+                FROM projects_current p
+                LEFT JOIN project_management pm ON pm.project_id = p.project_id
+                LEFT JOIN lawyers l ON l.id = pm.responsable_lawyer_id
+                WHERE p.estado_normalizado = 'aprobado'
+            """
+            params: list[Any] = []
+
+            if search:
+                query += " AND (p.nombre_proyecto LIKE ? OR p.titular LIKE ?)"
+                term = f"%{search}%"
+                params.extend([term, term])
+
+            if region:
+                query += " AND p.region = ?"
+                params.append(region)
+
+            if pipeline_status:
+                query += " AND COALESCE(pm.pipeline_status, 'contactado') = ?"
+                params.append(pipeline_status)
+
+            if responsable_lawyer_id is not None:
+                query += " AND pm.responsable_lawyer_id = ?"
+                params.append(responsable_lawyer_id)
+
+            query += """
+                ORDER BY p.last_updated DESC, p.first_seen DESC
+                LIMIT ? OFFSET ?
+            """
+            params.extend([limit, offset])
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            items = []
+            for row in rows:
+                item = dict(row)
+                item["is_new"] = self._compute_is_new(item.get("first_seen"))
+                items.append(item)
+            return items
+
+    def count_projects_panel(
+        self,
+        search: Optional[str] = None,
+        region: Optional[str] = None,
+        pipeline_status: Optional[str] = None,
+        responsable_lawyer_id: Optional[int] = None
+    ) -> int:
+        """Cuenta proyectos con mismos filtros del listado."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT COUNT(1) AS total
+                FROM projects_current p
+                LEFT JOIN project_management pm ON pm.project_id = p.project_id
+                WHERE p.estado_normalizado = 'aprobado'
+            """
+            params: list[Any] = []
+
+            if search:
+                query += " AND (p.nombre_proyecto LIKE ? OR p.titular LIKE ?)"
+                term = f"%{search}%"
+                params.extend([term, term])
+            if region:
+                query += " AND p.region = ?"
+                params.append(region)
+            if pipeline_status:
+                query += " AND COALESCE(pm.pipeline_status, 'contactado') = ?"
+                params.append(pipeline_status)
+            if responsable_lawyer_id is not None:
+                query += " AND pm.responsable_lawyer_id = ?"
+                params.append(responsable_lawyer_id)
+
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            return int(row["total"]) if row else 0
+
+    def get_project_panel_detail(self, project_id: str) -> Optional[dict[str, Any]]:
+        """Retorna detalle combinado de un proyecto para el panel."""
+        self._ensure_management_record(project_id)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    p.project_id,
+                    p.nombre_proyecto,
+                    p.titular,
+                    p.region,
+                    p.tipo,
+                    p.fecha_ingreso,
+                    p.estado,
+                    p.estado_normalizado,
+                    p.url_detalle,
+                    p.first_seen,
+                    p.last_updated,
+                    pm.pipeline_status,
+                    pm.responsable_lawyer_id,
+                    pm.prioridad,
+                    pm.proxima_accion_at,
+                    pm.ultima_interaccion_at,
+                    pm.probabilidad_cierre,
+                    pm.notas,
+                    l.nombre AS responsable_lawyer_nombre,
+                    l.email AS responsable_lawyer_email
+                FROM projects_current p
+                LEFT JOIN project_management pm ON pm.project_id = p.project_id
+                LEFT JOIN lawyers l ON l.id = pm.responsable_lawyer_id
+                WHERE p.project_id = ?
+                LIMIT 1
+            """, (project_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            item = dict(row)
+            item["is_new"] = self._compute_is_new(item.get("first_seen"))
+            return item
+
+    def update_project_management(
+        self,
+        project_id: str,
+        pipeline_status: Optional[str] = None,
+        responsable_lawyer_id: Optional[int] = None,
+        prioridad: Optional[str] = None,
+        proxima_accion_at: Optional[str] = None,
+        ultima_interaccion_at: Optional[str] = None,
+        probabilidad_cierre: Optional[int] = None,
+        notas: Optional[str] = None
+    ) -> None:
+        """Actualiza campos internos de gestión comercial/legal."""
+        self._ensure_management_record(project_id)
+
+        updates: list[str] = []
+        params: list[Any] = []
+
+        allowed_status = {"contactado", "en_conversaciones", "fallido", "completado"}
+        if pipeline_status is not None:
+            if pipeline_status not in allowed_status:
+                raise ValueError(f"pipeline_status inválido: {pipeline_status}")
+            updates.append("pipeline_status = ?")
+            params.append(pipeline_status)
+
+        if responsable_lawyer_id is not None:
+            updates.append("responsable_lawyer_id = ?")
+            params.append(responsable_lawyer_id)
+
+        if prioridad is not None:
+            if prioridad not in {"baja", "media", "alta"}:
+                raise ValueError(f"prioridad inválida: {prioridad}")
+            updates.append("prioridad = ?")
+            params.append(prioridad)
+
+        if proxima_accion_at is not None:
+            updates.append("proxima_accion_at = ?")
+            params.append(proxima_accion_at)
+
+        if ultima_interaccion_at is not None:
+            updates.append("ultima_interaccion_at = ?")
+            params.append(ultima_interaccion_at)
+
+        if probabilidad_cierre is not None:
+            if probabilidad_cierre < 0 or probabilidad_cierre > 100:
+                raise ValueError("probabilidad_cierre debe estar entre 0 y 100")
+            updates.append("probabilidad_cierre = ?")
+            params.append(probabilidad_cierre)
+
+        if notas is not None:
+            updates.append("notas = ?")
+            params.append(notas)
+
+        if not updates:
+            return
+
+        updates.append("updated_at = ?")
+        params.append(datetime.now().isoformat())
+        params.append(project_id)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                UPDATE project_management
+                SET {", ".join(updates)}
+                WHERE project_id = ?
+            """, params)
+            conn.commit()
+
+    def add_project_activity(
+        self,
+        project_id: str,
+        content: str,
+        activity_type: str = "nota",
+        created_by: Optional[str] = None
+    ) -> int:
+        """Agrega una actividad/note al proyecto y retorna ID creado."""
+        self._ensure_management_record(project_id)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO project_activity (project_id, activity_type, content, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (project_id, activity_type, content, created_by, datetime.now().isoformat()))
+            activity_id = int(cursor.lastrowid)
+            conn.commit()
+            return activity_id
+
+    def get_project_activity(self, project_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Retorna la actividad interna ordenada descendente por fecha."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, project_id, activity_type, content, created_by, created_at
+                FROM project_activity
+                WHERE project_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (project_id, limit))
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    def get_dashboard_kpis(self) -> dict[str, Any]:
+        """Retorna métricas principales para cabecera del panel."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(1) AS total
+                FROM projects_current
+                WHERE estado_normalizado = 'aprobado'
+            """)
+            total_projects = int(cursor.fetchone()["total"])
+
+            cursor.execute("""
+                SELECT COALESCE(pm.pipeline_status, 'contactado') AS pipeline_status, COUNT(1) AS total
+                FROM projects_current p
+                LEFT JOIN project_management pm ON pm.project_id = p.project_id
+                WHERE p.estado_normalizado = 'aprobado'
+                GROUP BY COALESCE(pm.pipeline_status, 'contactado')
+            """)
+            by_status = {row["pipeline_status"]: int(row["total"]) for row in cursor.fetchall()}
+
+            cursor.execute("""
+                SELECT COUNT(1) AS total
+                FROM projects_current p
+                LEFT JOIN project_management pm ON pm.project_id = p.project_id
+                WHERE p.estado_normalizado = 'aprobado'
+                  AND pm.responsable_lawyer_id IS NULL
+            """)
+            without_lawyer = int(cursor.fetchone()["total"])
+
+            cursor.execute("""
+                SELECT COUNT(1) AS total
+                FROM project_management pm
+                INNER JOIN projects_current p ON p.project_id = pm.project_id
+                WHERE proxima_accion_at IS NOT NULL
+                  AND p.estado_normalizado = 'aprobado'
+                  AND datetime(proxima_accion_at) < datetime('now')
+                  AND pm.pipeline_status NOT IN ('fallido', 'completado')
+            """)
+            overdue_followups = int(cursor.fetchone()["total"])
+
+            return {
+                "total_projects": total_projects,
+                "by_pipeline_status": by_status,
+                "without_lawyer": without_lawyer,
+                "overdue_followups": overdue_followups,
+            }
 
     # ─── Validation Methods ──────────────────────────────────────────────
 

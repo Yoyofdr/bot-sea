@@ -231,7 +231,62 @@ python -m seia_monitor test-teams
 
 # Verificar configuración
 python -m seia_monitor config-check
+
+# Levantar panel web (API + interfaz)
+python -m seia_monitor panel --host 127.0.0.1 --port 8000
 ```
+
+### Panel de Monitoreo Web
+
+El sistema ahora incluye un panel interactivo para gestionar el pipeline interno de cada proyecto:
+
+- Listado de proyectos con búsqueda y filtros
+- Estado interno: `contactado`, `en_conversaciones`, `fallido`, `completado`
+- Asignación de abogado responsable
+- Notas por proyecto y actividad de seguimiento
+- KPIs de cartera (totales, sin responsable, seguimientos vencidos)
+
+Al iniciar el panel:
+
+1. Ejecutar:
+   ```bash
+   python -m seia_monitor panel --host 127.0.0.1 --port 8000
+   ```
+2. Abrir en navegador: `http://127.0.0.1:8000`
+
+#### Fuente de datos del panel (segura)
+
+Para evitar tocar la BD de producción en DigitalOcean:
+
+- `DB_PATH`: BD operativa del monitor/scraper.
+- `PANEL_DB_PATH`: BD exclusiva del panel (copia local desde DO).
+
+Ejemplo en `.env`:
+
+```env
+DB_PATH=data/seia_monitor.db
+PANEL_DB_PATH=data/seia_monitor_panel.db
+```
+
+Script de sincronización segura (solo copia, nunca modifica DO):
+
+```bash
+chmod +x sync_panel_db_from_do.sh
+DO_SSH="root@TU_IP_DO" \
+DO_DB_PATH="/ruta/remota/seia_monitor.db" \
+./sync_panel_db_from_do.sh
+```
+
+### Endpoints principales del panel (API)
+
+- `GET /api/projects`
+- `GET /api/projects/{project_id}`
+- `PATCH /api/projects/{project_id}/management`
+- `GET /api/projects/{project_id}/activity`
+- `POST /api/projects/{project_id}/activity`
+- `GET /api/lawyers`
+- `POST /api/lawyers`
+- `GET /api/dashboard/kpis`
 
 ### Ejecución Manual (una vez)
 

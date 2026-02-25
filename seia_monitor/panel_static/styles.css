@@ -1,0 +1,4 @@
+/* Intencionalmente mínimo: el diseño principal está en Tailwind dentro de app.jsx */
+body {
+  margin: 0;
+}

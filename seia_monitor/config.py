@@ -34,6 +34,7 @@ class Config:
     
     # Database
     DB_PATH: str = os.getenv("DB_PATH", "data/seia_monitor.db")
+    PANEL_DB_PATH: str = os.getenv("PANEL_DB_PATH", DB_PATH)
     
     # Scraping Config
     REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "30"))
@@ -106,6 +107,13 @@ class Config:
         if Path(cls.DB_PATH).is_absolute():
             return Path(cls.DB_PATH)
         return cls.BASE_DIR / cls.DB_PATH
+
+    @classmethod
+    def get_panel_db_path(cls) -> Path:
+        """Retorna la ruta absoluta de la BD usada por el panel."""
+        if Path(cls.PANEL_DB_PATH).is_absolute():
+            return Path(cls.PANEL_DB_PATH)
+        return cls.BASE_DIR / cls.PANEL_DB_PATH
     
     @classmethod
     def get_log_path(cls) -> Path:
