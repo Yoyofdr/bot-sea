@@ -118,8 +118,8 @@ def format_project_html(project: Project) -> str:
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:0 0 8px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:15px; color:#4b5563;">
+                  <td style="padding:0 0 8px 0; font-family:Arial, Helvetica, sans-serif; text-align:justify; text-justify:inter-word;">
+                    <p style="margin:0; font-size:15px; color:#4b5563; text-align:justify; text-justify:inter-word; line-height:1.7; mso-line-height-rule:exactly;">
                       {resumen}
                     </p>
                   </td>
