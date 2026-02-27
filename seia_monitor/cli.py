@@ -6,6 +6,7 @@ Usa Typer para una experiencia moderna y amigable.
 import sys
 from typing import Optional
 import typer
+import uvicorn
 from rich.console import Console
 from rich.table import Table
 
@@ -14,6 +15,7 @@ from seia_monitor.logger import get_logger, setup_logger
 from seia_monitor.runner import MonitoringRunner, run_monitoring
 from seia_monitor.scheduler import start_scheduler
 from seia_monitor.storage import SEIAStorage
+from seia_monitor.panel_api import create_app
 
 # Inicializar app de Typer
 app = typer.Typer(
@@ -377,6 +379,19 @@ def version():
     """Muestra la version del sistema."""
     from seia_monitor import __version__
     console.print(f"SEIA Monitor v{__version__}")
+
+
+@app.command()
+def panel(
+    host: str = typer.Option("127.0.0.1", "--host", help="Host del panel"),
+    port: int = typer.Option(8000, "--port", help="Puerto del panel"),
+    reload: bool = typer.Option(False, "--reload", help="Auto-reload en desarrollo"),
+):
+    """
+    Levanta API + frontend del panel de monitoreo.
+    """
+    console.print(f"[cyan]Iniciando panel en http://{host}:{port}[/cyan]")
+    uvicorn.run(create_app(), host=host, port=port, reload=reload)
 
 
 def main():
