@@ -12,9 +12,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from seia_monitor.config import Config
+from seia_monitor.panel_seed import seed_bye_socios
 from seia_monitor.storage import SEIAStorage
 
-ALLOWED_PIPELINE_STATUS = {"contactado", "en_conversaciones", "fallido", "completado"}
+ALLOWED_PIPELINE_STATUS = {"sin_contactar", "contactado", "fallido", "completado"}
 ALLOWED_PRIORIDAD = {"baja", "media", "alta"}
 
 
@@ -43,6 +44,7 @@ class LawyerCreate(BaseModel):
 def create_app() -> FastAPI:
     app = FastAPI(title="SEIA Panel API", version="1.0.0")
     storage = SEIAStorage(db_path=Config.get_panel_db_path())
+    seed_bye_socios(storage)
 
     app.add_middleware(
         CORSMiddleware,
@@ -138,6 +140,10 @@ def create_app() -> FastAPI:
     @app.get("/api/lawyers")
     def list_lawyers(only_active: bool = Query(default=True)) -> dict:
         return {"items": storage.get_lawyers(only_active=only_active)}
+
+    @app.get("/api/regions")
+    def list_regions() -> dict:
+        return {"items": storage.get_regions_panel()}
 
     @app.post("/api/lawyers")
     def create_lawyer(payload: LawyerCreate) -> dict:

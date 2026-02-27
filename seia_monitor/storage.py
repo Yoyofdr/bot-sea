@@ -163,7 +163,7 @@ class SEIAStorage:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS project_management (
                     project_id TEXT PRIMARY KEY,
-                    pipeline_status TEXT NOT NULL DEFAULT 'contactado',
+                    pipeline_status TEXT NOT NULL DEFAULT 'sin_contactar',
                     responsable_lawyer_id INTEGER,
                     prioridad TEXT NOT NULL DEFAULT 'media',
                     proxima_accion_at TIMESTAMP,
@@ -174,11 +174,13 @@ class SEIAStorage:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (project_id) REFERENCES projects_current(project_id),
                     FOREIGN KEY (responsable_lawyer_id) REFERENCES lawyers(id),
-                    CHECK (pipeline_status IN ('contactado', 'en_conversaciones', 'fallido', 'completado')),
+                    CHECK (pipeline_status IN ('sin_contactar', 'contactado', 'fallido', 'completado')),
                     CHECK (prioridad IN ('baja', 'media', 'alta')),
                     CHECK (probabilidad_cierre IS NULL OR (probabilidad_cierre >= 0 AND probabilidad_cierre <= 100))
                 )
             """)
+
+            self._migrate_project_management_schema_if_needed(cursor)
 
             # Tabla: project_activity (timeline interna)
             cursor.execute("""
@@ -226,6 +228,70 @@ class SEIAStorage:
             
             conn.commit()
             logger.debug("Schema inicializado correctamente")
+
+    def _migrate_project_management_schema_if_needed(self, cursor: sqlite3.Cursor) -> None:
+        """
+        Migra project_management para soportar estados:
+        sin_contactar, contactado, fallido, completado.
+        """
+        cursor.execute("""
+            SELECT sql
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'project_management'
+        """)
+        row = cursor.fetchone()
+        if not row:
+            return
+
+        current_sql = (row["sql"] or "").lower()
+        if "sin_contactar" in current_sql and "en_conversaciones" not in current_sql:
+            return
+
+        logger.info("Migrando project_management al nuevo set de estados")
+        cursor.execute("ALTER TABLE project_management RENAME TO project_management_old")
+        cursor.execute("""
+            CREATE TABLE project_management (
+                project_id TEXT PRIMARY KEY,
+                pipeline_status TEXT NOT NULL DEFAULT 'sin_contactar',
+                responsable_lawyer_id INTEGER,
+                prioridad TEXT NOT NULL DEFAULT 'media',
+                proxima_accion_at TIMESTAMP,
+                ultima_interaccion_at TIMESTAMP,
+                probabilidad_cierre INTEGER,
+                notas TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects_current(project_id),
+                FOREIGN KEY (responsable_lawyer_id) REFERENCES lawyers(id),
+                CHECK (pipeline_status IN ('sin_contactar', 'contactado', 'fallido', 'completado')),
+                CHECK (prioridad IN ('baja', 'media', 'alta')),
+                CHECK (probabilidad_cierre IS NULL OR (probabilidad_cierre >= 0 AND probabilidad_cierre <= 100))
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO project_management (
+                project_id, pipeline_status, responsable_lawyer_id, prioridad,
+                proxima_accion_at, ultima_interaccion_at, probabilidad_cierre,
+                notas, created_at, updated_at
+            )
+            SELECT
+                project_id,
+                CASE
+                    WHEN pipeline_status = 'en_conversaciones' THEN 'contactado'
+                    WHEN pipeline_status IN ('sin_contactar', 'contactado', 'fallido', 'completado') THEN pipeline_status
+                    ELSE 'sin_contactar'
+                END,
+                responsable_lawyer_id,
+                COALESCE(prioridad, 'media'),
+                proxima_accion_at,
+                ultima_interaccion_at,
+                probabilidad_cierre,
+                notas,
+                created_at,
+                updated_at
+            FROM project_management_old
+        """)
+        cursor.execute("DROP TABLE project_management_old")
     
     def get_current_projects(self) -> list[Project]:
         """
@@ -849,16 +915,27 @@ class SEIAStorage:
                     p.url_detalle,
                     p.first_seen,
                     p.last_updated,
-                    COALESCE(pm.pipeline_status, 'contactado') AS pipeline_status,
+                    COALESCE(pm.pipeline_status, 'sin_contactar') AS pipeline_status,
                     pm.responsable_lawyer_id,
                     pm.prioridad,
                     pm.proxima_accion_at,
                     pm.ultima_interaccion_at,
                     pm.probabilidad_cierre,
-                    l.nombre AS responsable_lawyer_nombre
+                    l.nombre AS responsable_lawyer_nombre,
+                    pd.descripcion_completa,
+                    pd.monto_inversion,
+                    pd.titular_nombre,
+                    pd.rep_legal_nombre,
+                    pd.titular_email,
+                    pd.rep_legal_email,
+                    pd.titular_telefono,
+                    pd.rep_legal_telefono
                 FROM projects_current p
                 LEFT JOIN project_management pm ON pm.project_id = p.project_id
                 LEFT JOIN lawyers l ON l.id = pm.responsable_lawyer_id
+                LEFT JOIN project_details pd
+                  ON pd.project_id = p.project_id
+                  OR pd.project_id = REPLACE(p.project_id, 'seia_', '')
                 WHERE p.estado_normalizado = 'aprobado'
             """
             params: list[Any] = []
@@ -873,7 +950,7 @@ class SEIAStorage:
                 params.append(region)
 
             if pipeline_status:
-                query += " AND COALESCE(pm.pipeline_status, 'contactado') = ?"
+                query += " AND COALESCE(pm.pipeline_status, 'sin_contactar') = ?"
                 params.append(pipeline_status)
 
             if responsable_lawyer_id is not None:
@@ -921,7 +998,7 @@ class SEIAStorage:
                 query += " AND p.region = ?"
                 params.append(region)
             if pipeline_status:
-                query += " AND COALESCE(pm.pipeline_status, 'contactado') = ?"
+                query += " AND COALESCE(pm.pipeline_status, 'sin_contactar') = ?"
                 params.append(pipeline_status)
             if responsable_lawyer_id is not None:
                 query += " AND pm.responsable_lawyer_id = ?"
@@ -930,6 +1007,20 @@ class SEIAStorage:
             cursor.execute(query, params)
             row = cursor.fetchone()
             return int(row["total"]) if row else 0
+
+    def get_regions_panel(self) -> list[str]:
+        """Retorna regiones disponibles para filtro del panel."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT DISTINCT region
+                FROM projects_current
+                WHERE estado_normalizado = 'aprobado'
+                  AND region IS NOT NULL
+                  AND TRIM(region) != ''
+                ORDER BY region ASC
+            """)
+            return [row["region"] for row in cursor.fetchall()]
 
     def get_project_panel_detail(self, project_id: str) -> Optional[dict[str, Any]]:
         """Retorna detalle combinado de un proyecto para el panel."""
@@ -957,10 +1048,21 @@ class SEIAStorage:
                     pm.probabilidad_cierre,
                     pm.notas,
                     l.nombre AS responsable_lawyer_nombre,
-                    l.email AS responsable_lawyer_email
+                    l.email AS responsable_lawyer_email,
+                    pd.descripcion_completa,
+                    pd.monto_inversion,
+                    pd.titular_nombre,
+                    pd.rep_legal_nombre,
+                    pd.titular_email,
+                    pd.rep_legal_email,
+                    pd.titular_telefono,
+                    pd.rep_legal_telefono
                 FROM projects_current p
                 LEFT JOIN project_management pm ON pm.project_id = p.project_id
                 LEFT JOIN lawyers l ON l.id = pm.responsable_lawyer_id
+                LEFT JOIN project_details pd
+                  ON pd.project_id = p.project_id
+                  OR pd.project_id = REPLACE(p.project_id, 'seia_', '')
                 WHERE p.project_id = ?
                 LIMIT 1
             """, (project_id,))
@@ -988,7 +1090,7 @@ class SEIAStorage:
         updates: list[str] = []
         params: list[Any] = []
 
-        allowed_status = {"contactado", "en_conversaciones", "fallido", "completado"}
+        allowed_status = {"sin_contactar", "contactado", "fallido", "completado"}
         if pipeline_status is not None:
             if pipeline_status not in allowed_status:
                 raise ValueError(f"pipeline_status inválido: {pipeline_status}")
@@ -1084,11 +1186,11 @@ class SEIAStorage:
             total_projects = int(cursor.fetchone()["total"])
 
             cursor.execute("""
-                SELECT COALESCE(pm.pipeline_status, 'contactado') AS pipeline_status, COUNT(1) AS total
+                SELECT COALESCE(pm.pipeline_status, 'sin_contactar') AS pipeline_status, COUNT(1) AS total
                 FROM projects_current p
                 LEFT JOIN project_management pm ON pm.project_id = p.project_id
                 WHERE p.estado_normalizado = 'aprobado'
-                GROUP BY COALESCE(pm.pipeline_status, 'contactado')
+                GROUP BY COALESCE(pm.pipeline_status, 'sin_contactar')
             """)
             by_status = {row["pipeline_status"]: int(row["total"]) for row in cursor.fetchall()}
 
