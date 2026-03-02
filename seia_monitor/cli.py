@@ -35,7 +35,7 @@ def run(
     ),
     dry_run: bool = typer.Option(
         False,
-        "--dry-run",
+        "--dry-run/--no-dry-run",
         help="Modo de prueba (no guarda ni notifica)"
     ),
     verbose: bool = typer.Option(
@@ -99,7 +99,7 @@ def run(
 def bootstrap(
     dry_run: bool = typer.Option(
         False,
-        "--dry-run",
+        "--dry-run/--no-dry-run",
         help="Simular sin guardar cambios"
     ),
     verbose: bool = typer.Option(
