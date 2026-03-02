@@ -34,8 +34,8 @@ def run(
         help="Ejecutar una sola vez y salir"
     ),
     dry_run: bool = typer.Option(
-        False,
-        "--dry-run/--no-dry-run",
+        True,
+        "--dry-run",
         help="Modo de prueba (no guarda ni notifica)"
     ),
     verbose: bool = typer.Option(
@@ -98,8 +98,8 @@ def run(
 @app.command()
 def bootstrap(
     dry_run: bool = typer.Option(
-        False,
-        "--dry-run/--no-dry-run",
+        True,
+        "--dry-run",
         help="Simular sin guardar cambios"
     ),
     verbose: bool = typer.Option(
