@@ -105,16 +105,37 @@ class RunStats:
 
 
 @dataclass
+class IcsaraEvent:
+    """Representa la detección del primer ICSARA de un proyecto"""
+    project_id: str
+    nombre_proyecto: str
+    fecha_icsara: str
+    url_detalle: Optional[str] = None
+    detected_at: Optional[datetime] = None
+
+
+@dataclass
 class ChangeResult:
     """Resultado de la detección de cambios"""
     nuevos: list[Project] = field(default_factory=list)
     cambios_relevantes: list[ChangeEvent] = field(default_factory=list)
     todos_los_cambios: list[ChangeEvent] = field(default_factory=list)
-    
+    nuevos_en_admision: list[Project] = field(default_factory=list)
+    transiciones_admision: list[ChangeEvent] = field(default_factory=list)
+
     def has_changes(self) -> bool:
         """Retorna True si hay cambios relevantes o nuevos proyectos"""
-        return len(self.nuevos) > 0 or len(self.cambios_relevantes) > 0
-    
+        return (
+            len(self.nuevos) > 0
+            or len(self.cambios_relevantes) > 0
+            or len(self.nuevos_en_admision) > 0
+            or len(self.transiciones_admision) > 0
+        )
+
     def __str__(self):
-        return f"Nuevos: {len(self.nuevos)}, Cambios relevantes: {len(self.cambios_relevantes)}"
+        return (
+            f"Nuevos aprobados: {len(self.nuevos)}, "
+            f"Nuevos en admisión: {len(self.nuevos_en_admision)}, "
+            f"Transiciones a admisión: {len(self.transiciones_admision)}"
+        )
 

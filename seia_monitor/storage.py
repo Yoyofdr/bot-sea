@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 from seia_monitor.config import Config
 from seia_monitor.logger import get_logger
-from seia_monitor.models import Project, ChangeEvent, RunStats, ProjectDetails
+from seia_monitor.models import Project, ChangeEvent, RunStats, ProjectDetails, IcsaraEvent
 
 logger = get_logger("storage")
 
@@ -181,6 +181,18 @@ class SEIAStorage:
             """)
 
             self._migrate_project_management_schema_if_needed(cursor)
+
+            # Tabla: icsara_watch (proyectos a los que se les monitorea el primer ICSARA)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS icsara_watch (
+                    project_id TEXT PRIMARY KEY,
+                    nombre_proyecto TEXT NOT NULL,
+                    url_detalle TEXT,
+                    added_at TIMESTAMP NOT NULL,
+                    icsara_detected_at TIMESTAMP,
+                    fecha_icsara TEXT
+                )
+            """)
 
             # Tabla: project_activity (timeline interna)
             cursor.execute("""
@@ -1281,6 +1293,63 @@ class SEIAStorage:
             )
             return False
         return True
+
+
+    # ─── ICSARA Watch Methods ─────────────────────────────────────────────
+
+    def add_to_icsara_watch(self, projects: list[Project]) -> int:
+        """
+        Agrega proyectos a la lista de vigilancia de primer ICSARA.
+        Ignora proyectos que ya están en la lista (INSERT OR IGNORE).
+
+        Returns:
+            Cantidad de proyectos efectivamente agregados.
+        """
+        if not projects:
+            return 0
+        now = datetime.now().isoformat()
+        added = 0
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            for p in projects:
+                cursor.execute("""
+                    INSERT OR IGNORE INTO icsara_watch
+                        (project_id, nombre_proyecto, url_detalle, added_at)
+                    VALUES (?, ?, ?, ?)
+                """, (p.project_id, p.nombre_proyecto, p.url_detalle, now))
+                if cursor.rowcount:
+                    added += 1
+            conn.commit()
+        if added:
+            logger.info(f"ICSARA watch: {added} proyecto(s) agregados")
+        return added
+
+    def get_pending_icsara_watch(self) -> list[dict]:
+        """
+        Retorna proyectos en vigilancia que aún no tienen ICSARA detectado.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT project_id, nombre_proyecto, url_detalle, added_at
+                FROM icsara_watch
+                WHERE icsara_detected_at IS NULL
+                ORDER BY added_at ASC
+            """)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def mark_icsara_detected(self, project_id: str, fecha_icsara: str) -> None:
+        """Marca que se detectó el primer ICSARA de un proyecto."""
+        now = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE icsara_watch
+                SET icsara_detected_at = ?, fecha_icsara = ?
+                WHERE project_id = ?
+            """, (now, fecha_icsara, project_id))
+            conn.commit()
+        logger.info(f"ICSARA detectado para {project_id}: {fecha_icsara}")
 
 
 def clear_database(db_path: Optional[Path] = None) -> None:

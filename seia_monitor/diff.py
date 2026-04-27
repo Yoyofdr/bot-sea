@@ -1,6 +1,6 @@
 """
 Motor de detección de cambios entre snapshots de proyectos.
-Identifica solo proyectos nuevos aprobados.
+Detecta nuevos proyectos aprobados y eventos de admisión (nuevos o transiciones).
 """
 
 from datetime import datetime
@@ -17,55 +17,78 @@ def detect_changes(
     current: list[Project]
 ) -> ChangeResult:
     """
-    Detecta proyectos nuevos aprobados entre dos snapshots.
-    
-    Estrategia simplificada: Solo identifica proyectos con estado normalizado
-    "aprobado" que no existían en el snapshot anterior. Ya no detectamos
-    cambios de estado.
-    
+    Detecta cambios relevantes entre dos snapshots.
+
+    Detecta:
+    - Proyectos nuevos (IDs no vistos antes) con estado "aprobado"
+    - Proyectos nuevos (IDs no vistos antes) con estado "en_admision"
+    - Proyectos existentes que transicionaron a estado "en_admision"
+
     Args:
         previous: Lista de proyectos del snapshot anterior
         current: Lista de proyectos del snapshot actual
-    
+
     Returns:
-        ChangeResult con nuevos proyectos (cambios_relevantes y todos_los_cambios vacíos)
+        ChangeResult con los tres tipos de eventos
     """
-    # Crear conjuntos de IDs
     previous_ids: Set[str] = {p.project_id for p in previous}
     current_ids: Set[str] = {p.project_id for p in current}
-    
-    # Proyectos nuevos (están en current pero no en previous)
     new_ids = current_ids - previous_ids
+
+    # ── Nuevos IDs aprobados ──────────────────────────────────────────────
     nuevos = [
         p for p in current
         if p.project_id in new_ids and p.estado_normalizado == "aprobado"
     ]
-    nuevos_descartados_no_aprobados = sum(
-        1
-        for p in current
-        if p.project_id in new_ids and p.estado_normalizado != "aprobado"
-    )
-    
     logger.info(f"Detectados {len(nuevos)} proyectos aprobados nuevos")
-    if nuevos_descartados_no_aprobados:
-        logger.warning(
-            "Descartados %s proyectos nuevos no aprobados",
-            nuevos_descartados_no_aprobados
-        )
-    
-    # Proyectos eliminados (opcional, solo para logging)
+
+    # ── Nuevos IDs en admisión ────────────────────────────────────────────
+    nuevos_en_admision = [
+        p for p in current
+        if p.project_id in new_ids and p.estado_normalizado == "en_admision"
+    ]
+    logger.info(f"Detectados {len(nuevos_en_admision)} proyectos nuevos en admisión")
+
+    # ── Transiciones a en_admision en IDs ya conocidos ────────────────────
+    previous_map = {p.project_id: p for p in previous}
+    transiciones_admision: list[ChangeEvent] = []
+    for p in current:
+        if p.project_id not in previous_ids:
+            continue
+        prev = previous_map[p.project_id]
+        if (
+            prev.estado_normalizado != "en_admision"
+            and p.estado_normalizado == "en_admision"
+        ):
+            event = ChangeEvent(
+                project_id=p.project_id,
+                nombre_proyecto=p.nombre_proyecto,
+                estado_anterior=prev.estado,
+                estado_nuevo=p.estado,
+                estado_anterior_normalizado=prev.estado_normalizado,
+                estado_nuevo_normalizado=p.estado_normalizado,
+                region=p.region,
+                url_detalle=p.url_detalle,
+                timestamp=datetime.now(),
+                is_relevant=True,
+            )
+            transiciones_admision.append(event)
+    logger.info(f"Detectadas {len(transiciones_admision)} transiciones a en_admisión")
+
+    # ── Proyectos eliminados (solo log) ───────────────────────────────────
     removed_ids = previous_ids - current_ids
     if removed_ids:
         logger.info(f"Proyectos ya no presentes: {len(removed_ids)}")
-    
+
     result = ChangeResult(
         nuevos=nuevos,
-        cambios_relevantes=[],  # Ya no detectamos cambios de estado
-        todos_los_cambios=[]
+        cambios_relevantes=[],
+        todos_los_cambios=transiciones_admision[:],
+        nuevos_en_admision=nuevos_en_admision,
+        transiciones_admision=transiciones_admision,
     )
-    
-    logger.info(f"Resultado: Nuevos: {len(nuevos)}, Cambios relevantes: 0")
-    
+
+    logger.info(str(result))
     return result
 
 

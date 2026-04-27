@@ -16,13 +16,28 @@ from seia_monitor.scraper import scrape_seia
 from seia_monitor.storage import SEIAStorage
 from seia_monitor.diff import detect_changes
 from seia_monitor.notifier_email import (
-    send_email_notification,
+    send_combined_notification,
     send_anomaly_alert_notification,
     send_quarantine_alert_notification
 )
 from seia_monitor.scraper_detail import scrape_project_details
+from seia_monitor.scraper_icsara import check_first_icsara
+from seia_monitor.models import IcsaraEvent
 
 logger = get_logger("runner")
+
+
+def _change_event_to_project(event):
+    """Convierte un ChangeEvent de transición a admisión en un Project mínimo."""
+    from seia_monitor.models import Project
+    return Project(
+        project_id=event.project_id,
+        nombre_proyecto=event.nombre_proyecto,
+        estado=event.estado_nuevo,
+        estado_normalizado=event.estado_nuevo_normalizado,
+        region=event.region,
+        url_detalle=event.url_detalle,
+    )
 
 
 class MonitoringRunner:
@@ -81,6 +96,62 @@ class MonitoringRunner:
                         logger.error(f"  Error extrayendo detalles de '{project.nombre_proyecto[:30]}...': {e}")
                         project.details = None
             logger.info(f"Detalles extraidos de {detalles_extraidos}/{len(changes.nuevos)} nuevos")
+
+    def _add_admision_to_icsara_watch(self, changes: ChangeResult):
+        """Agrega al watch de ICSARA los proyectos que entraron a admisión."""
+        from seia_monitor.models import Project
+        projects_to_watch: list[Project] = list(changes.nuevos_en_admision)
+        for event in changes.transiciones_admision:
+            # Reconstruir un Project mínimo desde el ChangeEvent para el watch
+            p = Project(
+                project_id=event.project_id,
+                nombre_proyecto=event.nombre_proyecto,
+                url_detalle=event.url_detalle,
+                estado=event.estado_nuevo,
+                estado_normalizado=event.estado_nuevo_normalizado,
+                region=event.region,
+            )
+            projects_to_watch.append(p)
+        if projects_to_watch:
+            self.storage.add_to_icsara_watch(projects_to_watch)
+
+    def _check_icsara_watch(self) -> list[IcsaraEvent]:
+        """
+        Revisa todos los proyectos pendientes en icsara_watch.
+        Por cada uno, intenta detectar el primer ICSARA.
+        Retorna los IcsaraEvent recién detectados.
+        """
+        pending = self.storage.get_pending_icsara_watch()
+        if not pending:
+            logger.info("ICSARA watch: sin proyectos pendientes")
+            return []
+
+        logger.info(f"ICSARA watch: revisando {len(pending)} proyecto(s) pendiente(s)")
+        detected: list[IcsaraEvent] = []
+
+        for item in pending:
+            project_id = item['project_id']
+            url_detalle = item.get('url_detalle')
+            if not url_detalle:
+                logger.warning(f"  Sin URL para {project_id}, omitiendo")
+                continue
+            try:
+                fecha = check_first_icsara(url_detalle, project_id)
+                if fecha:
+                    self.storage.mark_icsara_detected(project_id, fecha)
+                    detected.append(IcsaraEvent(
+                        project_id=project_id,
+                        nombre_proyecto=item['nombre_proyecto'],
+                        fecha_icsara=fecha,
+                        url_detalle=url_detalle,
+                        detected_at=datetime.now(),
+                    ))
+                time.sleep(2)
+            except Exception as e:
+                logger.error(f"  Error revisando ICSARA de {project_id}: {e}")
+
+        logger.info(f"ICSARA watch: {len(detected)} nuevo(s) ICSARA detectado(s)")
+        return detected
 
     def _save_details(self, changes: ChangeResult):
         """Persiste detalles extraidos a BD."""
@@ -273,40 +344,64 @@ class MonitoringRunner:
             return stats
 
         if not dry_run:
-            # Extraer detalles
+            # Extraer detalles de proyectos aprobados
             self._extract_details_for_changes(changes)
 
             # Promover staging a current
             self.storage.promote_staging_to_current()
 
-            # Guardar historial
+            # Guardar historial (transiciones a admisión)
             if changes.todos_los_cambios:
                 self.storage.add_history_entries(changes.todos_los_cambios)
 
             # Guardar detalles
             self._save_details(changes)
 
-            # Notificar por email
+            # Agregar proyectos en admisión al watch de ICSARA
+            self._add_admision_to_icsara_watch(changes)
+
+            # Revisar watch de ICSARA
+            icsara_events = self._check_icsara_watch()
+
+            # Notificar por email (combinado: aprobados + admisión + ICSARA)
             if self.config.EMAIL_ENABLED:
                 try:
-                    if changes.nuevos:
-                        logger.info(f"Enviando {len(changes.nuevos)} proyecto(s) nuevo(s) por email")
+                    has_any = (
+                        changes.nuevos
+                        or changes.nuevos_en_admision
+                        or changes.transiciones_admision
+                        or icsara_events
+                    )
+                    if has_any:
+                        logger.info(
+                            f"Enviando email combinado: "
+                            f"{len(changes.nuevos)} aprobados, "
+                            f"{len(changes.nuevos_en_admision) + len(changes.transiciones_admision)} en admisión, "
+                            f"{len(icsara_events)} ICSARA"
+                        )
                     else:
-                        logger.info("Enviando email de confirmacion (sin proyectos nuevos)")
+                        logger.info("Sin novedades hoy — omitiendo email")
 
-                    notification_sent = send_email_notification(changes.nuevos, self.config)
-                    if notification_sent:
-                        logger.info("Notificacion enviada por email")
-                    else:
-                        logger.warning("No se pudo enviar notificacion por email")
+                    if has_any:
+                        notification_sent = send_combined_notification(
+                            nuevos_aprobados=changes.nuevos,
+                            en_admision=changes.nuevos_en_admision + [
+                                _change_event_to_project(e) for e in changes.transiciones_admision
+                            ],
+                            icsara_events=icsara_events,
+                            config=self.config,
+                        )
+                        if notification_sent:
+                            logger.info("Notificacion combinada enviada por email")
+                        else:
+                            logger.warning("No se pudo enviar notificacion por email")
                 except Exception as e:
                     error_msg = f"Error enviando notificacion: {e}"
                     logger.warning(error_msg)
                     errors.append(error_msg)
         else:
             logger.info("Dry run: omitiendo persistencia y notificaciones")
-            # En dry run igual detectamos cambios para mostrar
-            changes = detect_changes(previous_projects, projects)
+            icsara_events = []
 
         stats = self._build_stats(True, projects, scrape_meta, changes, errors, start_time)
         if not dry_run:

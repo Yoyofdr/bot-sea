@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Optional
 
 from seia_monitor.config import Config
-from seia_monitor.models import Project
+from seia_monitor.models import Project, IcsaraEvent
 from seia_monitor.logger import get_logger
 
 logger = get_logger("notifier_email")
@@ -389,6 +389,343 @@ def send_email_notification(proyectos_nuevos: list[Project], config: Optional[Co
         
     except Exception as e:
         logger.error(f"Error enviando email: {e}")
+        return False
+
+
+def format_admision_html(project: Project) -> str:
+    """Formatea un proyecto en admisión para el email."""
+    nombre = html.escape(project.nombre_proyecto or 'Sin nombre')
+    region = html.escape(project.region or 'N/A')
+    tipo = html.escape(project.tipo or 'N/A')
+    fecha = html.escape(project.fecha_ingreso or 'N/A')
+    titular = html.escape(project.titular or 'N/A')
+    url_ficha = project.url_detalle or '#'
+
+    return f"""
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0 0 24px 0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                <tr>
+                  <td style="padding:0 0 12px 0; font-family:Arial, Helvetica, sans-serif;">
+                    <p style="margin:0; font-size:22px; font-weight:800; color:#111827; line-height:1.2; overflow-wrap:anywhere;">
+                      {nombre}
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td bgcolor="#eff6ff" style="background-color:#eff6ff; padding:20px; border:1px solid #bfdbfe;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                      <tr>
+                        <td bgcolor="#2563eb" style="background-color:#2563eb; padding:4px 10px; border:1px solid #2563eb;">
+                          <span style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
+                            EN ADMISIÓN
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin-top:12px;">
+                      <tr>
+                        <td width="50%" valign="top" style="padding:0; padding-right:8px; font-family:Arial, Helvetica, sans-serif;">
+                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Titular</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{titular}</p>
+                        </td>
+                        <td width="50%" valign="top" style="padding:0; padding-left:8px; font-family:Arial, Helvetica, sans-serif;">
+                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Región</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{region}</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="50%" valign="top" style="padding:12px 0 0 0; padding-right:8px; font-family:Arial, Helvetica, sans-serif;">
+                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Tipo</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{tipo}</p>
+                        </td>
+                        <td width="50%" valign="top" style="padding:12px 0 0 0; padding-left:8px; font-family:Arial, Helvetica, sans-serif;">
+                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha Ingreso</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{fecha}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:20px 0 8px 0;">
+                    <!--[if mso]>
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{url_ficha}"
+                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#2563eb" fillcolor="#2563eb">
+                        <w:anchorlock/>
+                        <center style="color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:14px;font-weight:bold;">
+                          VER FICHA COMPLETA
+                        </center>
+                      </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-- -->
+                    <a href="{url_ficha}" style="display:inline-block; background-color:#2563eb; border:1px solid #2563eb; color:#ffffff;
+                               font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:800;
+                               text-decoration:none; padding:12px 32px; border-radius:6px; line-height:14px;">
+                      VER FICHA COMPLETA
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0 32px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td style="height:1px; background-color:#e5e7eb; line-height:1px; font-size:1px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+    """
+
+
+def format_icsara_html(event: IcsaraEvent) -> str:
+    """Formatea un evento ICSARA para el email."""
+    nombre = html.escape(event.nombre_proyecto or 'Sin nombre')
+    fecha = html.escape(event.fecha_icsara or 'N/A')
+    url_ficha = event.url_detalle or '#'
+
+    return f"""
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0 0 24px 0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                <tr>
+                  <td style="padding:0 0 12px 0; font-family:Arial, Helvetica, sans-serif;">
+                    <p style="margin:0; font-size:22px; font-weight:800; color:#111827; line-height:1.2; overflow-wrap:anywhere;">
+                      {nombre}
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td bgcolor="#fefce8" style="background-color:#fefce8; padding:20px; border:1px solid #fde68a;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                      <tr>
+                        <td bgcolor="#d97706" style="background-color:#d97706; padding:4px 10px; border:1px solid #d97706;">
+                          <span style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
+                            PRIMER ICSARA
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin-top:12px;">
+                      <tr>
+                        <td valign="top" style="font-family:Arial, Helvetica, sans-serif;">
+                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha del ICSARA</p>
+                          <p style="margin:2px 0 0 0; font-size:16px; font-weight:800; color:#374151;">{fecha}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:20px 0 8px 0;">
+                    <!--[if mso]>
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{url_ficha}"
+                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#d97706" fillcolor="#d97706">
+                        <w:anchorlock/>
+                        <center style="color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:14px;font-weight:bold;">
+                          VER EXPEDIENTE
+                        </center>
+                      </v:roundrect>
+                    <![endif]-->
+                    <!--[if !mso]><!-- -->
+                    <a href="{url_ficha}" style="display:inline-block; background-color:#d97706; border:1px solid #d97706; color:#ffffff;
+                               font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:800;
+                               text-decoration:none; padding:12px 32px; border-radius:6px; line-height:14px;">
+                      VER EXPEDIENTE
+                    </a>
+                    <!--<![endif]-->
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0 32px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td style="height:1px; background-color:#e5e7eb; line-height:1px; font-size:1px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+    """
+
+
+def _section_header(title: str, count: int) -> str:
+    """Genera un header de sección para el email combinado."""
+    return f"""
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin-bottom:16px;">
+                <tr>
+                  <td style="padding:8px 0 4px 0; font-family:Arial, Helvetica, sans-serif; border-bottom:3px solid #111827;">
+                    <p style="margin:0; font-size:13px; font-weight:800; color:#111827; letter-spacing:0.10em; text-transform:uppercase;">
+                      {html.escape(title)} <span style="color:#6b7280; font-weight:400;">({count})</span>
+                    </p>
+                  </td>
+                </tr>
+                <tr><td height="20" style="height:20px; line-height:20px; font-size:20px;">&nbsp;</td></tr>
+              </table>
+    """
+
+
+def create_combined_email_body(
+    nuevos_aprobados: list[Project],
+    en_admision: list[Project],
+    icsara_events: list[IcsaraEvent],
+    timestamp: datetime,
+) -> str:
+    """
+    Crea el cuerpo del email combinado con secciones para cada tipo de hito.
+    Solo incluye secciones con contenido.
+    """
+    sections_html = ""
+
+    if en_admision:
+        sections_html += _section_header("En Admisión", len(en_admision))
+        for p in en_admision:
+            sections_html += format_admision_html(p)
+
+    if icsara_events:
+        sections_html += _section_header("Primer ICSARA", len(icsara_events))
+        for event in icsara_events:
+            sections_html += format_icsara_html(event)
+
+    if nuevos_aprobados:
+        sections_html += _section_header("Aprobados (RCA)", len(nuevos_aprobados))
+        for p in nuevos_aprobados:
+            sections_html += format_project_html(p)
+
+    if not sections_html:
+        sections_html = """
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+          <tr>
+            <td style="padding:32px; text-align:center; font-family:Arial, Helvetica, sans-serif; color:#6b7280;">
+              <p style="font-size:16px; margin:0;">No se detectaron novedades en esta revisión.</p>
+            </td>
+          </tr>
+        </table>
+        """
+
+    fecha_str = timestamp.strftime("%d/%m/%Y")
+
+    return f"""
+    <!doctype html>
+    <html lang="es" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+      <meta name="color-scheme" content="light only">
+      <meta name="supported-color-schemes" content="light">
+      <title>SEIA - Novedades {fecha_str}</title>
+      <!--[if mso]>
+      <xml>
+        <o:OfficeDocumentSettings>
+          <o:AllowPNG/>
+          <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+      </xml>
+      <style type="text/css">
+        table, td, div, p, a, span {{ font-family: Arial, Helvetica, sans-serif !important; }}
+        table {{ border-collapse: collapse !important; }}
+      </style>
+      <![endif]-->
+    </head>
+    <body style="margin:0; padding:0; background-color:#f9fafb;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="background-color:#f9fafb; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+        <tr>
+          <td align="center" style="padding:24px 12px;">
+            <!--[if mso]>
+            <table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0" style="mso-table-lspace:0pt; mso-table-rspace:0pt;">
+              <tr><td>
+            <![endif]-->
+            <table role="presentation" width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0"
+                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb; border-collapse:collapse; table-layout:fixed; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+              <tr>
+                <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#111827; line-height:1.5;">
+                  <!-- Título del reporte -->
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin-bottom:32px;">
+                    <tr>
+                      <td style="font-family:Arial, Helvetica, sans-serif;">
+                        <p style="margin:0; font-size:13px; color:#6b7280; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Monitoreo SEIA</p>
+                        <p style="margin:4px 0 0 0; font-size:28px; font-weight:800; color:#111827;">Novedades del {fecha_str}</p>
+                      </td>
+                    </tr>
+                  </table>
+                  {sections_html}
+                </td>
+              </tr>
+              <tr>
+                <td bgcolor="#f3f4f6" style="background-color:#f3f4f6; padding:24px; text-align:center; border-top:1px solid #e5e7eb;
+                                           font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
+                  <p style="margin:0 0 4px 0;">Este es un mensaje automático del sistema de monitoreo SEIA.</p>
+                  <p style="margin:0 0 8px 0;">No responder a este correo electrónico.</p>
+                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.04.27.1</p>
+                </td>
+              </tr>
+            </table>
+            <!--[if mso]>
+              </td></tr>
+            </table>
+            <![endif]-->
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+
+def send_combined_notification(
+    nuevos_aprobados: list[Project],
+    en_admision: list[Project],
+    icsara_events: list[IcsaraEvent],
+    config: Optional[Config] = None,
+) -> bool:
+    """
+    Envía el email combinado con todos los hitos del día.
+    Solo envía si hay al menos un evento de cualquier tipo.
+    """
+    if config is None:
+        config = Config()
+
+    if not config.EMAIL_ENABLED:
+        return False
+
+    if not config.EMAIL_API_BASE_URL or not config.EMAIL_API_USER or not config.EMAIL_API_PASSWORD or not config.EMAIL_TO:
+        logger.warning("Configuración de email incompleta")
+        return False
+
+    try:
+        token = get_api_token(config)
+        if not token:
+            return False
+
+        html_body = create_combined_email_body(
+            nuevos_aprobados=nuevos_aprobados,
+            en_admision=en_admision,
+            icsara_events=icsara_events,
+            timestamp=datetime.now(),
+        )
+
+        # Construir subject descriptivo
+        parts = []
+        if nuevos_aprobados:
+            parts.append(f"{len(nuevos_aprobados)} Aprobado(s)")
+        if en_admision:
+            parts.append(f"{len(en_admision)} En Admisión")
+        if icsara_events:
+            parts.append(f"{len(icsara_events)} ICSARA")
+        subject = "SEIA — " + ", ".join(parts) if parts else "SEIA — Sin novedades"
+
+        recipients = [email.strip() for email in config.EMAIL_TO.split(",")]
+        all_success = True
+        for recipient in recipients:
+            if recipient and not send_email_via_api(recipient, subject, html_body, token, config):
+                all_success = False
+
+        if all_success:
+            logger.info(f"Email combinado enviado: {subject}")
+        return all_success
+
+    except Exception as e:
+        logger.error(f"Error enviando email combinado: {e}")
         return False
 
 
