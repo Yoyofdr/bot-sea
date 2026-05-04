@@ -26,7 +26,7 @@ class SEIAPlaywrightScraper:
     # Mapeo de nombre de estado al valor del <option> en el formulario SEIA
     ESTADO_VALUES = {
         "Aprobado": "4",
-        "En Admisión": "1",
+        "En Admisión": "2",
     }
 
     def __init__(self, config: Config, estado: str = "Aprobado"):
