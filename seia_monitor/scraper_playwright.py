@@ -22,9 +22,17 @@ logger = get_logger("scraper_playwright")
 
 class SEIAPlaywrightScraper:
     """Scraper basado en Playwright para navegación completa del sitio"""
-    
-    def __init__(self, config: Config):
+
+    # Mapeo de nombre de estado al valor del <option> en el formulario SEIA
+    ESTADO_VALUES = {
+        "Aprobado": "4",
+        "En Admisión": "1",
+    }
+
+    def __init__(self, config: Config, estado: str = "Aprobado"):
         self.config = config
+        self.estado = estado
+        self.estado_value = self.ESTADO_VALUES.get(estado, "4")
         self.debug_dir = config.BASE_DIR / "data" / "debug"
         self.debug_dir.mkdir(parents=True, exist_ok=True)
     
@@ -55,11 +63,12 @@ class SEIAPlaywrightScraper:
 
         sample_size = max(1, min(len(projects), self.config.APPROVED_SAMPLE_SIZE))
         sample = projects[:sample_size]
-        approved_count = sum(1 for p in sample if p.estado_normalizado == "aprobado")
+        known_states = {"aprobado", "en_admision"}
+        approved_count = sum(1 for p in sample if p.estado_normalizado in known_states)
         ratio = approved_count / sample_size
 
         logger.info(
-            "Validación de consistencia (muestra): %s/%s aprobados (%.1f%%)",
+            "Validación de consistencia (muestra): %s/%s estados conocidos (%.1f%%)",
             approved_count,
             sample_size,
             ratio * 100
@@ -67,7 +76,7 @@ class SEIAPlaywrightScraper:
 
         if ratio < self.config.APPROVED_MIN_RATIO:
             logger.error(
-                "Muestra inconsistente: ratio de aprobados %.1f%% < umbral %.1f%%",
+                "Muestra inconsistente: ratio de estados conocidos %.1f%% < umbral %.1f%%",
                 ratio * 100,
                 self.config.APPROVED_MIN_RATIO * 100
             )
@@ -145,40 +154,41 @@ class SEIAPlaywrightScraper:
                 self._save_debug_info(page, "select_not_found")
                 return False
 
-            # PASO 3: Seleccionar "Aprobado" (value=4) con reintentos
+            # PASO 3: Seleccionar estado en el <select> con reintentos
             estado_selected = False
-            select_js = """() => {
+            estado_value = self.estado_value
+            select_js = f"""() => {{
                 const select = document.querySelector('select[name="projectStatus[]"]');
-                if (!select) {
-                    return { ok: false, error: 'Selector no encontrado' };
-                }
-                const option = select.querySelector('option[value="4"]');
-                if (!option) {
-                    return { ok: false, error: 'Opción value=4 no encontrada' };
-                }
-                for (const opt of select.options) {
+                if (!select) {{
+                    return {{ ok: false, error: 'Selector no encontrado' }};
+                }}
+                const option = select.querySelector('option[value="{estado_value}"]');
+                if (!option) {{
+                    return {{ ok: false, error: 'Opción value={estado_value} no encontrada' }};
+                }}
+                for (const opt of select.options) {{
                     opt.selected = false;
-                }
+                }}
                 option.selected = true;
-                select.value = '4';
-                select.dispatchEvent(new Event('input', { bubbles: true }));
-                select.dispatchEvent(new Event('change', { bubbles: true }));
+                select.value = '{estado_value}';
+                select.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                select.dispatchEvent(new Event('change', {{ bubbles: true }}));
 
                 const selectedValues = Array.from(select.selectedOptions).map(o => o.value);
-                return {
-                    ok: selectedValues.includes('4'),
+                return {{
+                    ok: selectedValues.includes('{estado_value}'),
                     selectedValues,
                     selectedLabel: option.textContent ? option.textContent.trim() : ''
-                };
-            }"""
+                }};
+            }}"""
 
             for attempt in range(3):
                 try:
                     result = page.evaluate(select_js)
                     if isinstance(result, dict) and result.get("ok"):
                         logger.info(
-                            "Estado 'Aprobado' seleccionado (intento %d): values=%s, label='%s'",
-                            attempt + 1,
+                            "Estado '%s' seleccionado (intento %d): values=%s, label='%s'",
+                            self.estado, attempt + 1,
                             result.get("selectedValues"),
                             result.get("selectedLabel", "")
                         )
@@ -192,7 +202,7 @@ class SEIAPlaywrightScraper:
                 time.sleep(2)
 
             if not estado_selected:
-                logger.error("No se logró aplicar el filtro 'Aprobado' tras 3 intentos. Abortando.")
+                logger.error(f"No se logró aplicar el filtro '{self.estado}' tras 3 intentos. Abortando.")
                 self._save_debug_info(page, "filter_failed")
                 return False
 
@@ -575,16 +585,17 @@ class SEIAPlaywrightScraper:
                 raise Exception(error_msg) from e
 
 
-def scrape_with_playwright(config: Config) -> tuple[list[Project], ScrapeMeta]:
+def scrape_with_playwright(config: Config, estado: str = "Aprobado") -> tuple[list[Project], ScrapeMeta]:
     """
     Función de entrada para scraping con Playwright.
-    
+
     Args:
         config: Configuración del sistema
-    
+        estado: Estado a filtrar en el formulario SEIA
+
     Returns:
         Tupla de (proyectos, metadata)
     """
-    scraper = SEIAPlaywrightScraper(config)
+    scraper = SEIAPlaywrightScraper(config, estado=estado)
     return scraper.scrape()
 

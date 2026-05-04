@@ -115,9 +115,11 @@ class MonitoringRunner:
         if projects_to_watch:
             self.storage.add_to_icsara_watch(projects_to_watch)
 
+    ICSARA_MAX_PER_RUN = 5
+
     def _check_icsara_watch(self) -> list[IcsaraEvent]:
         """
-        Revisa todos los proyectos pendientes en icsara_watch.
+        Revisa proyectos pendientes en icsara_watch (máx ICSARA_MAX_PER_RUN por corrida).
         Por cada uno, intenta detectar el primer ICSARA.
         Retorna los IcsaraEvent recién detectados.
         """
@@ -125,6 +127,12 @@ class MonitoringRunner:
         if not pending:
             logger.info("ICSARA watch: sin proyectos pendientes")
             return []
+
+        if len(pending) > self.ICSARA_MAX_PER_RUN:
+            logger.info(
+                f"ICSARA watch: {len(pending)} pendientes, revisando sólo los primeros {self.ICSARA_MAX_PER_RUN}"
+            )
+            pending = pending[: self.ICSARA_MAX_PER_RUN]
 
         logger.info(f"ICSARA watch: revisando {len(pending)} proyecto(s) pendiente(s)")
         detected: list[IcsaraEvent] = []
@@ -199,7 +207,7 @@ class MonitoringRunner:
         # Validar ratio de aprobados
         if approved_ratio < self.config.APPROVED_MIN_RATIO:
             reason = (
-                f"Ratio de aprobados {approved_ratio:.1%} < umbral "
+                f"Ratio de estados conocidos {approved_ratio:.1%} < umbral "
                 f"{self.config.APPROVED_MIN_RATIO:.1%}"
             )
             logger.error(f"Bootstrap rechazado: {reason}")
@@ -361,7 +369,11 @@ class MonitoringRunner:
             self._add_admision_to_icsara_watch(changes)
 
             # Revisar watch de ICSARA
-            icsara_events = self._check_icsara_watch()
+            try:
+                icsara_events = self._check_icsara_watch()
+            except Exception as e:
+                logger.error(f"Error en _check_icsara_watch, omitiendo ICSARA: {e}")
+                icsara_events = []
 
             # Notificar por email (combinado: aprobados + admisión + ICSARA)
             if self.config.EMAIL_ENABLED:
@@ -383,11 +395,14 @@ class MonitoringRunner:
                         logger.info("Sin novedades hoy — omitiendo email")
 
                     if has_any:
+                        projects_by_id = {p.project_id: p for p in projects}
+                        en_admision_list = list(changes.nuevos_en_admision) + [
+                            projects_by_id.get(e.project_id, _change_event_to_project(e))
+                            for e in changes.transiciones_admision
+                        ]
                         notification_sent = send_combined_notification(
                             nuevos_aprobados=changes.nuevos,
-                            en_admision=changes.nuevos_en_admision + [
-                                _change_event_to_project(e) for e in changes.transiciones_admision
-                            ],
+                            en_admision=en_admision_list,
                             icsara_events=icsara_events,
                             config=self.config,
                         )
@@ -512,9 +527,10 @@ class MonitoringRunner:
             if not id_schema_ok:
                 logger.warning("Esquema de project_id con anomalias")
 
-            approved_count = sum(1 for p in projects if p.estado_normalizado == "aprobado")
+            known_states = {"aprobado", "en_admision"}
+            approved_count = sum(1 for p in projects if p.estado_normalizado in known_states)
             approved_ratio = approved_count / len(projects) if projects else 0
-            logger.info(f"Ratio de aprobados: {approved_count}/{len(projects)} ({approved_ratio:.1%})")
+            logger.info(f"Ratio de estados conocidos: {approved_count}/{len(projects)} ({approved_ratio:.1%})")
 
             # 4. CARGAR BASELINE
             logger.info("Paso 4: Cargando baseline actual")

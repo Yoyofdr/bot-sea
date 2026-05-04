@@ -22,9 +22,10 @@ logger = get_logger("scraper_requests")
 
 class SEIARequestsScraper:
     """Scraper basado en requests con manejo de sesión y reintentos"""
-    
-    def __init__(self, config: Config):
+
+    def __init__(self, config: Config, estado: str = "Aprobado"):
         self.config = config
+        self.estado = estado
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': config.USER_AGENT,
@@ -111,9 +112,8 @@ class SEIARequestsScraper:
         Returns:
             HTML de la página o None si falla
         """
-        # Preparar datos del formulario para búsqueda de proyectos aprobados
         form_data = {
-            'estadoProyecto': 'Aprobado',
+            'estadoProyecto': self.estado,
             'pagina': str(page_num),
             # Campos adicionales comunes en formularios SEIA:
             'buscar': '1',
@@ -285,17 +285,18 @@ class SEIARequestsScraper:
             raise Exception(error_msg) from e
 
 
-def scrape_with_requests(config: Config) -> tuple[list[Project], ScrapeMeta]:
+def scrape_with_requests(config: Config, estado: str = "Aprobado") -> tuple[list[Project], ScrapeMeta]:
     """
     Función de entrada para scraping con requests.
-    
+
     Args:
         config: Configuración del sistema
-    
+        estado: Valor del campo estadoProyecto del formulario SEIA
+
     Returns:
         Tupla de (proyectos, metadata)
     """
-    scraper = SEIARequestsScraper(config)
+    scraper = SEIARequestsScraper(config, estado=estado)
     return scraper.scrape()
 
 

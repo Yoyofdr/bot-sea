@@ -156,82 +156,83 @@ def check_first_icsara(
                         '--disable-setuid-sandbox',
                     ]
                 )
-                context = browser.new_context(
-                    user_agent=config.USER_AGENT,
-                    viewport={'width': 1920, 'height': 1080},
-                    locale='es-CL',
-                    timezone_id='America/Santiago',
-                    extra_http_headers=REALISTIC_HEADERS,
-                    ignore_https_errors=True
-                )
-                page = context.new_page()
-                page.add_init_script("""
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                """)
-                page.set_default_timeout(config.REQUEST_TIMEOUT * 1000)
+                try:
+                    context = browser.new_context(
+                        user_agent=config.USER_AGENT,
+                        viewport={'width': 1920, 'height': 1080},
+                        locale='es-CL',
+                        timezone_id='America/Santiago',
+                        extra_http_headers=REALISTIC_HEADERS,
+                        ignore_https_errors=True
+                    )
+                    page = context.new_page()
+                    page.add_init_script("""
+                        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    """)
+                    page.set_default_timeout(config.REQUEST_TIMEOUT * 1000)
 
-                # Paso 1: Establecer sesión en la página principal
-                logger.info(f"  → Estableciendo sesión...")
-                page.goto('https://seia.sea.gob.cl/', wait_until='networkidle')
-                time.sleep(random.uniform(1, 2))
+                    # Paso 1: Establecer sesión en la página principal
+                    logger.info(f"  → Estableciendo sesión...")
+                    page.goto('https://seia.sea.gob.cl/', wait_until='networkidle')
+                    time.sleep(random.uniform(1, 2))
 
-                # Paso 2: Navegar a la ficha del proyecto (modo=ficha expone pestañas)
-                logger.info(f"  → Cargando ficha: {ficha_url}")
-                page.goto(ficha_url, wait_until='networkidle')
-                time.sleep(random.uniform(1, 2))
+                    # Paso 2: Navegar a la ficha del proyecto (modo=ficha expone pestañas)
+                    logger.info(f"  → Cargando ficha: {ficha_url}")
+                    page.goto(ficha_url, wait_until='networkidle')
+                    time.sleep(random.uniform(1, 2))
 
-                # Paso 3: Buscar y hacer click en "Expediente de Evaluación"
-                logger.info("  → Buscando pestaña Expediente de Evaluación...")
-                expediente_clicked = False
+                    # Paso 3: Buscar y hacer click en "Expediente de Evaluación"
+                    logger.info("  → Buscando pestaña Expediente de Evaluación...")
+                    expediente_clicked = False
 
-                # Intentar diferentes selectores para el link/tab del expediente
-                selectors = [
-                    'a:has-text("Expediente de Evaluación")',
-                    'a:has-text("Expediente")',
-                    'button:has-text("Expediente de Evaluación")',
-                    'li:has-text("Expediente de Evaluación") a',
-                    '[href*="expediente"]',
-                ]
-                for selector in selectors:
-                    try:
-                        element = page.locator(selector).first
-                        if element.count() > 0:
-                            element.click()
-                            expediente_clicked = True
-                            logger.info(f"  → Click en expediente con selector: {selector}")
-                            break
-                    except Exception:
-                        continue
-
-                if not expediente_clicked:
-                    # Intentar buscar por texto parcial en todos los links
-                    links = page.locator('a').all()
-                    for link in links:
+                    # Intentar diferentes selectores para el link/tab del expediente
+                    selectors = [
+                        'a:has-text("Expediente de Evaluación")',
+                        'a:has-text("Expediente")',
+                        'button:has-text("Expediente de Evaluación")',
+                        'li:has-text("Expediente de Evaluación") a',
+                        '[href*="expediente"]',
+                    ]
+                    for selector in selectors:
                         try:
-                            link_text = link.inner_text()
-                            if 'expediente' in link_text.lower() and 'evaluaci' in link_text.lower():
-                                link.click()
+                            element = page.locator(selector).first
+                            if element.count() > 0:
+                                element.click()
                                 expediente_clicked = True
-                                logger.info(f"  → Click en link: {link_text[:60]}")
+                                logger.info(f"  → Click en expediente con selector: {selector}")
                                 break
                         except Exception:
                             continue
 
-                if not expediente_clicked:
-                    logger.warning(f"  → No se encontró pestaña de expediente para {project_id}")
+                    if not expediente_clicked:
+                        # Intentar buscar por texto parcial en todos los links
+                        links = page.locator('a').all()
+                        for link in links:
+                            try:
+                                link_text = link.inner_text()
+                                if 'expediente' in link_text.lower() and 'evaluaci' in link_text.lower():
+                                    link.click()
+                                    expediente_clicked = True
+                                    logger.info(f"  → Click en link: {link_text[:60]}")
+                                    break
+                            except Exception:
+                                continue
+
+                    if not expediente_clicked:
+                        logger.warning(f"  → No se encontró pestaña de expediente para {project_id}")
+                        return None
+
+                    # Paso 4: Esperar a que cargue el contenido del expediente
+                    time.sleep(random.uniform(2, 3))
+                    try:
+                        page.wait_for_load_state('networkidle', timeout=10000)
+                    except Exception:
+                        pass
+
+                    # Paso 5: Obtener HTML y buscar ICSARA
+                    html = page.content()
+                finally:
                     browser.close()
-                    return None
-
-                # Paso 4: Esperar a que cargue el contenido del expediente
-                time.sleep(random.uniform(2, 3))
-                try:
-                    page.wait_for_load_state('networkidle', timeout=10000)
-                except Exception:
-                    pass
-
-                # Paso 5: Obtener HTML y buscar ICSARA
-                html = page.content()
-                browser.close()
 
             fecha_icsara = _extract_icsara_date(html)
 
