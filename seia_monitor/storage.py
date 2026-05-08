@@ -237,9 +237,27 @@ class SEIAStorage:
                 CREATE INDEX IF NOT EXISTS idx_activity_project
                 ON project_activity(project_id, created_at DESC)
             """)
-            
+
+            self._migrate_icsara_watch_if_needed(cursor)
+
             conn.commit()
             logger.debug("Schema inicializado correctamente")
+
+    def _migrate_icsara_watch_if_needed(self, cursor: sqlite3.Cursor) -> None:
+        """Agrega columnas de tracking de errores a icsara_watch si no existen."""
+        new_columns = [
+            ("error_count", "INTEGER DEFAULT 0"),
+            ("last_error", "TEXT"),
+            ("last_checked_at", "TIMESTAMP"),
+        ]
+        for col_name, col_def in new_columns:
+            try:
+                cursor.execute(
+                    f"ALTER TABLE icsara_watch ADD COLUMN {col_name} {col_def}"
+                )
+                logger.info(f"Migración icsara_watch: columna '{col_name}' agregada")
+            except sqlite3.OperationalError:
+                pass  # La columna ya existe
 
     def _migrate_project_management_schema_if_needed(self, cursor: sqlite3.Cursor) -> None:
         """
@@ -1324,19 +1342,37 @@ class SEIAStorage:
             logger.info(f"ICSARA watch: {added} proyecto(s) agregados")
         return added
 
-    def get_pending_icsara_watch(self) -> list[dict]:
+    def get_pending_icsara_watch(self, max_errors: int = 20) -> list[dict]:
         """
         Retorna proyectos en vigilancia que aún no tienen ICSARA detectado.
+        Excluye proyectos con más de max_errors errores consecutivos (URL inaccesible).
         """
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT project_id, nombre_proyecto, url_detalle, added_at
+                SELECT project_id, nombre_proyecto, url_detalle, added_at,
+                       COALESCE(error_count, 0) AS error_count,
+                       last_error, last_checked_at
                 FROM icsara_watch
                 WHERE icsara_detected_at IS NULL
+                  AND COALESCE(error_count, 0) <= ?
                 ORDER BY added_at ASC
-            """)
+            """, (max_errors,))
             return [dict(row) for row in cursor.fetchall()]
+
+    def increment_icsara_error(self, project_id: str, error_msg: str) -> None:
+        """Incrementa el contador de errores de navegación para un proyecto."""
+        now = datetime.now().isoformat()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE icsara_watch
+                SET error_count    = COALESCE(error_count, 0) + 1,
+                    last_error     = ?,
+                    last_checked_at = ?
+                WHERE project_id = ?
+            """, (error_msg[:500], now, project_id))
+            conn.commit()
 
     def mark_icsara_detected(self, project_id: str, fecha_icsara: str) -> None:
         """Marca que se detectó el primer ICSARA de un proyecto."""

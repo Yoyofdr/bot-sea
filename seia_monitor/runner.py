@@ -157,6 +157,7 @@ class MonitoringRunner:
                 time.sleep(2)
             except Exception as e:
                 logger.error(f"  Error revisando ICSARA de {project_id}: {e}")
+                self.storage.increment_icsara_error(project_id, str(e))
 
         logger.info(f"ICSARA watch: {len(detected)} nuevo(s) ICSARA detectado(s)")
         return detected
