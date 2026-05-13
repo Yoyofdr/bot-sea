@@ -58,15 +58,15 @@ def format_project_html(project: Project) -> str:
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                 <tr>
                   <td style="padding:0 0 24px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:26px; font-weight:800; color:#111827; line-height:1.2; overflow-wrap:anywhere; word-break:normal;">
+                    <p style="margin:0; font-size:26px; font-weight:800; color:#14532d; line-height:1.2; overflow-wrap:anywhere; word-break:normal;">
                       {nombre}
                     </p>
                   </td>
                 </tr>
 
-                <!-- Key Facts Card (fondo gris con contraste) -->
+                <!-- Key Facts Card (tono SEIA verde suave) -->
                 <tr>
-                  <td bgcolor="#f3f4f6" style="background-color:#f3f4f6; padding:20px; border:1px solid #e5e7eb;">
+                  <td bgcolor="#ecfdf5" style="background-color:#ecfdf5; padding:20px; border:1px solid #bbf7d0;">
                     <!-- Badge con border real para Outlook -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                       <tr>
@@ -87,22 +87,22 @@ def format_project_html(project: Project) -> str:
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                       <tr>
                         <td width="50%" valign="top" style="padding:0; padding-right:8px; padding-bottom:16px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Monto Inversión</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{monto}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Monto Inversión</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{monto}</p>
                         </td>
                         <td width="50%" valign="top" style="padding:0; padding-left:8px; padding-bottom:16px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Región</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{region}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Región</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{region}</p>
                         </td>
                       </tr>
                       <tr>
                         <td width="50%" valign="top" style="padding:0; padding-right:8px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Tipo</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{tipo}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Tipo</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{tipo}</p>
                         </td>
                         <td width="50%" valign="top" style="padding:0; padding-left:8px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha Ingreso</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{fecha}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha Ingreso</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{fecha}</p>
                         </td>
                       </tr>
                     </table>
@@ -112,14 +112,14 @@ def format_project_html(project: Project) -> str:
                 <!-- Sección Resumen con border-bottom fijo -->
                 <tr>
                   <td style="padding:32px 0 12px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:14px; font-weight:800; color:#4b5563; letter-spacing:0.10em; text-transform:uppercase; padding:0 0 6px 0; border-bottom:2px solid #f3f4f6; mso-line-height-rule:exactly;">
+                    <p style="margin:0; font-size:14px; font-weight:800; color:#166534; letter-spacing:0.10em; text-transform:uppercase; padding:0 0 6px 0; border-bottom:2px solid #bbf7d0; mso-line-height-rule:exactly;">
                       RESUMEN DEL PROYECTO
                     </p>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding:0 0 8px 0; font-family:Arial, Helvetica, sans-serif; text-align:justify; text-justify:inter-word;">
-                    <p style="margin:0; font-size:15px; color:#4b5563; text-align:justify; text-justify:inter-word; line-height:1.7; mso-line-height-rule:exactly;">
+                    <p style="margin:0; font-size:15px; color:#2d4734; text-align:justify; text-justify:inter-word; line-height:1.7; mso-line-height-rule:exactly;">
                       {resumen}
                     </p>
                   </td>
@@ -128,7 +128,7 @@ def format_project_html(project: Project) -> str:
                 <!-- Sección Contacto -->
                 <tr>
                   <td style="padding:24px 0 12px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:14px; font-weight:800; color:#4b5563; letter-spacing:0.10em; text-transform:uppercase; padding:0 0 6px 0; border-bottom:2px solid #f3f4f6; mso-line-height-rule:exactly;">
+                    <p style="margin:0; font-size:14px; font-weight:800; color:#166534; letter-spacing:0.10em; text-transform:uppercase; padding:0 0 6px 0; border-bottom:2px solid #bbf7d0; mso-line-height-rule:exactly;">
                       Información de Contacto
                     </p>
                   </td>
@@ -141,13 +141,13 @@ def format_project_html(project: Project) -> str:
                         <!-- Titular -->
                         <td width="48%" valign="top" style="padding:0;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                                 style="border:1px solid #e5e7eb; background-color:#ffffff; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                                 style="border:1px solid #bbf7d0; background-color:#ffffff; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                             <tr>
                               <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
-                                <p style="margin:0 0 4px 0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
+                                <p style="margin:0 0 4px 0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
                                   Titular
                                 </p>
-                                <p style="margin:0 0 2px 0; font-size:14px; font-weight:800; color:#111827;">
+                                <p style="margin:0 0 2px 0; font-size:14px; font-weight:800; color:#14532d;">
                                   {titular_n}
                                 </p>
                                 <a href="mailto:{titular_e}" style="font-size:13px; color:#5FA91D; text-decoration:none;">
@@ -163,13 +163,13 @@ def format_project_html(project: Project) -> str:
                         <!-- Rep Legal -->
                         <td width="48%" valign="top" style="padding:0;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-                                 style="border:1px solid #e5e7eb; background-color:#ffffff; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                                 style="border:1px solid #bbf7d0; background-color:#ffffff; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                             <tr>
                               <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
-                                <p style="margin:0 0 4px 0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
+                                <p style="margin:0 0 4px 0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">
                                   Rep. Legal
                                 </p>
-                                <p style="margin:0 0 2px 0; font-size:14px; font-weight:800; color:#111827;">
+                                <p style="margin:0 0 2px 0; font-size:14px; font-weight:800; color:#14532d;">
                                   {rep_n}
                                 </p>
                                 <a href="mailto:{rep_e}" style="font-size:13px; color:#5FA91D; text-decoration:none;">
@@ -213,7 +213,7 @@ def format_project_html(project: Project) -> str:
                   <td style="padding:10px 0 40px 0;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                       <tr>
-                        <td style="height:1px; background-color:#e5e7eb; line-height:1px; font-size:1px;">&nbsp;</td>
+                        <td style="height:1px; background-color:#bbf7d0; line-height:1px; font-size:1px;">&nbsp;</td>
                       </tr>
                     </table>
                   </td>
@@ -235,7 +235,7 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
         proyectos_html = """
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
           <tr>
-            <td style="padding:32px; text-align:center; font-family:Arial, Helvetica, sans-serif; color:#6b7280;">
+            <td style="padding:32px; text-align:center; font-family:Arial, Helvetica, sans-serif; color:#15803d;">
               <p style="font-size:16px; margin:0;">No se detectaron proyectos aprobados nuevos en esta revisión.</p>
             </td>
           </tr>
@@ -266,8 +266,8 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
       </style>
       <![endif]-->
     </head>
-    <body style="margin:0; padding:0; background-color:#f9fafb;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="background-color:#f9fafb; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+    <body style="margin:0; padding:0; background-color:#f0fdf4;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f0fdf4" style="background-color:#f0fdf4; mso-table-lspace:0pt; mso-table-rspace:0pt;">
         <tr>
           <td align="center" style="padding:24px 12px;">
 
@@ -277,20 +277,23 @@ def create_email_body(proyectos_nuevos: list[Project], timestamp: datetime) -> s
             <![endif]-->
 
             <table role="presentation" width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0"
-                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb; border-collapse:collapse; table-layout:fixed; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #bbf7d0; border-collapse:collapse; table-layout:fixed; mso-table-lspace:0pt; mso-table-rspace:0pt;">
               <tr>
-                <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#111827; line-height:1.5;">
+                <td bgcolor="#5FA91D" height="8" style="height:8px; line-height:8px; font-size:8px; background-color:#5FA91D;">&nbsp;</td>
+              </tr>
+              <tr>
+                <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#14532d; line-height:1.5;">
                   {proyectos_html}
                 </td>
               </tr>
 
               <!-- Footer -->
               <tr>
-                <td bgcolor="#f3f4f6" style="background-color:#f3f4f6; padding:24px; text-align:center; border-top:1px solid #e5e7eb;
-                                           font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
+                <td bgcolor="#ecfdf5" style="background-color:#ecfdf5; padding:24px; text-align:center; border-top:1px solid #bbf7d0;
+                                           font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#166534;">
                   <p style="margin:0 0 4px 0;">Este es un mensaje automático del sistema de monitoreo SEIA.</p>
                   <p style="margin:0 0 8px 0;">No responder a este correo electrónico.</p>
-                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.02.02.6</p>
+                  <p style="margin:0; font-size:10px; color:#15803d;">v2026.05.12.3</p>
                 </td>
               </tr>
             </table>
@@ -405,16 +408,16 @@ def format_admision_html(project: Project) -> str:
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0 0 24px 0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                 <tr>
                   <td style="padding:0 0 12px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:22px; font-weight:800; color:#111827; line-height:1.2; overflow-wrap:anywhere;">
+                    <p style="margin:0; font-size:22px; font-weight:800; color:#14532d; line-height:1.2; overflow-wrap:anywhere;">
                       {nombre}
                     </p>
                   </td>
                 </tr>
                 <tr>
-                  <td bgcolor="#eff6ff" style="background-color:#eff6ff; padding:20px; border:1px solid #bfdbfe;">
+                  <td bgcolor="#ecfdf5" style="background-color:#ecfdf5; padding:20px; border:1px solid #bbf7d0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                       <tr>
-                        <td bgcolor="#2563eb" style="background-color:#2563eb; padding:4px 10px; border:1px solid #2563eb;">
+                        <td bgcolor="#5FA91D" style="background-color:#5FA91D; padding:4px 10px; border:1px solid #5FA91D;">
                           <span style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
                             EN ADMISIÓN
                           </span>
@@ -424,22 +427,22 @@ def format_admision_html(project: Project) -> str:
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin-top:12px;">
                       <tr>
                         <td width="50%" valign="top" style="padding:0; padding-right:8px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Titular</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{titular}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Titular</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{titular}</p>
                         </td>
                         <td width="50%" valign="top" style="padding:0; padding-left:8px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Región</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{region}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Región</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{region}</p>
                         </td>
                       </tr>
                       <tr>
                         <td width="50%" valign="top" style="padding:12px 0 0 0; padding-right:8px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Tipo</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{tipo}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Tipo</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{tipo}</p>
                         </td>
                         <td width="50%" valign="top" style="padding:12px 0 0 0; padding-left:8px; font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha Ingreso</p>
-                          <p style="margin:2px 0 0 0; font-size:14px; color:#374151;">{fecha}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha Ingreso</p>
+                          <p style="margin:2px 0 0 0; font-size:14px; color:#14532d;">{fecha}</p>
                         </td>
                       </tr>
                     </table>
@@ -449,7 +452,7 @@ def format_admision_html(project: Project) -> str:
                   <td align="center" style="padding:20px 0 8px 0;">
                     <!--[if mso]>
                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{url_ficha}"
-                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#2563eb" fillcolor="#2563eb">
+                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#5FA91D" fillcolor="#5FA91D">
                         <w:anchorlock/>
                         <center style="color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:14px;font-weight:bold;">
                           VER FICHA COMPLETA
@@ -457,7 +460,7 @@ def format_admision_html(project: Project) -> str:
                       </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-- -->
-                    <a href="{url_ficha}" style="display:inline-block; background-color:#2563eb; border:1px solid #2563eb; color:#ffffff;
+                    <a href="{url_ficha}" style="display:inline-block; background-color:#5FA91D; border:1px solid #5FA91D; color:#ffffff;
                                font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:800;
                                text-decoration:none; padding:12px 32px; border-radius:6px; line-height:14px;">
                       VER FICHA COMPLETA
@@ -469,7 +472,7 @@ def format_admision_html(project: Project) -> str:
                   <td style="padding:8px 0 32px 0;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                       <tr>
-                        <td style="height:1px; background-color:#e5e7eb; line-height:1px; font-size:1px;">&nbsp;</td>
+                        <td style="height:1px; background-color:#bbf7d0; line-height:1px; font-size:1px;">&nbsp;</td>
                       </tr>
                     </table>
                   </td>
@@ -488,16 +491,16 @@ def format_icsara_html(event: IcsaraEvent) -> str:
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0; padding:0 0 24px 0; border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                 <tr>
                   <td style="padding:0 0 12px 0; font-family:Arial, Helvetica, sans-serif;">
-                    <p style="margin:0; font-size:22px; font-weight:800; color:#111827; line-height:1.2; overflow-wrap:anywhere;">
+                    <p style="margin:0; font-size:22px; font-weight:800; color:#14532d; line-height:1.2; overflow-wrap:anywhere;">
                       {nombre}
                     </p>
                   </td>
                 </tr>
                 <tr>
-                  <td bgcolor="#fefce8" style="background-color:#fefce8; padding:20px; border:1px solid #fde68a;">
+                  <td bgcolor="#ecfdf5" style="background-color:#ecfdf5; padding:20px; border:1px solid #bbf7d0;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt;">
                       <tr>
-                        <td bgcolor="#d97706" style="background-color:#d97706; padding:4px 10px; border:1px solid #d97706;">
+                        <td bgcolor="#5FA91D" style="background-color:#5FA91D; padding:4px 10px; border:1px solid #5FA91D;">
                           <span style="font-family:Arial, Helvetica, sans-serif; font-size:11px; font-weight:700; color:#ffffff; letter-spacing:0.02em; text-transform:uppercase;">
                             PRIMER ICSARA
                           </span>
@@ -507,8 +510,8 @@ def format_icsara_html(event: IcsaraEvent) -> str:
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin-top:12px;">
                       <tr>
                         <td valign="top" style="font-family:Arial, Helvetica, sans-serif;">
-                          <p style="margin:0; font-size:11px; color:#6b7280; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha del ICSARA</p>
-                          <p style="margin:2px 0 0 0; font-size:16px; font-weight:800; color:#374151;">{fecha}</p>
+                          <p style="margin:0; font-size:11px; color:#15803d; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;">Fecha del ICSARA</p>
+                          <p style="margin:2px 0 0 0; font-size:16px; font-weight:800; color:#14532d;">{fecha}</p>
                         </td>
                       </tr>
                     </table>
@@ -518,7 +521,7 @@ def format_icsara_html(event: IcsaraEvent) -> str:
                   <td align="center" style="padding:20px 0 8px 0;">
                     <!--[if mso]>
                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{url_ficha}"
-                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#d97706" fillcolor="#d97706">
+                        style="height:44px;v-text-anchor:middle;width:260px;" arcsize="12%" strokecolor="#5FA91D" fillcolor="#5FA91D">
                         <w:anchorlock/>
                         <center style="color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:14px;font-weight:bold;">
                           VER EXPEDIENTE
@@ -526,7 +529,7 @@ def format_icsara_html(event: IcsaraEvent) -> str:
                       </v:roundrect>
                     <![endif]-->
                     <!--[if !mso]><!-- -->
-                    <a href="{url_ficha}" style="display:inline-block; background-color:#d97706; border:1px solid #d97706; color:#ffffff;
+                    <a href="{url_ficha}" style="display:inline-block; background-color:#5FA91D; border:1px solid #5FA91D; color:#ffffff;
                                font-family:Arial, Helvetica, sans-serif; font-size:14px; font-weight:800;
                                text-decoration:none; padding:12px 32px; border-radius:6px; line-height:14px;">
                       VER EXPEDIENTE
@@ -538,7 +541,7 @@ def format_icsara_html(event: IcsaraEvent) -> str:
                   <td style="padding:8px 0 32px 0;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                       <tr>
-                        <td style="height:1px; background-color:#e5e7eb; line-height:1px; font-size:1px;">&nbsp;</td>
+                        <td style="height:1px; background-color:#bbf7d0; line-height:1px; font-size:1px;">&nbsp;</td>
                       </tr>
                     </table>
                   </td>
@@ -552,9 +555,9 @@ def _section_header(title: str, count: int) -> str:
     return f"""
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; margin-bottom:16px;">
                 <tr>
-                  <td style="padding:8px 0 4px 0; font-family:Arial, Helvetica, sans-serif; border-bottom:3px solid #111827;">
-                    <p style="margin:0; font-size:13px; font-weight:800; color:#111827; letter-spacing:0.10em; text-transform:uppercase;">
-                      {html.escape(title)} <span style="color:#6b7280; font-weight:400;">({count})</span>
+                  <td style="padding:8px 0 4px 0; font-family:Arial, Helvetica, sans-serif; border-bottom:3px solid #5FA91D;">
+                    <p style="margin:0; font-size:13px; font-weight:800; color:#166534; letter-spacing:0.10em; text-transform:uppercase;">
+                      {html.escape(title)} <span style="color:#15803d; font-weight:600;">({count})</span>
                     </p>
                   </td>
                 </tr>
@@ -594,7 +597,7 @@ def create_combined_email_body(
         sections_html = """
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
           <tr>
-            <td style="padding:32px; text-align:center; font-family:Arial, Helvetica, sans-serif; color:#6b7280;">
+            <td style="padding:32px; text-align:center; font-family:Arial, Helvetica, sans-serif; color:#15803d;">
               <p style="font-size:16px; margin:0;">No se detectaron novedades en esta revisión.</p>
             </td>
           </tr>
@@ -627,8 +630,8 @@ def create_combined_email_body(
       </style>
       <![endif]-->
     </head>
-    <body style="margin:0; padding:0; background-color:#f9fafb;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="background-color:#f9fafb; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+    <body style="margin:0; padding:0; background-color:#f0fdf4;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f0fdf4" style="background-color:#f0fdf4; mso-table-lspace:0pt; mso-table-rspace:0pt;">
         <tr>
           <td align="center" style="padding:24px 12px;">
             <!--[if mso]>
@@ -636,15 +639,18 @@ def create_combined_email_body(
               <tr><td>
             <![endif]-->
             <table role="presentation" width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0"
-                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e7eb; border-collapse:collapse; table-layout:fixed; mso-table-lspace:0pt; mso-table-rspace:0pt;">
+                   style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #bbf7d0; border-collapse:collapse; table-layout:fixed; mso-table-lspace:0pt; mso-table-rspace:0pt;">
               <tr>
-                <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#111827; line-height:1.5;">
+                <td bgcolor="#5FA91D" height="8" style="height:8px; line-height:8px; font-size:8px; background-color:#5FA91D;">&nbsp;</td>
+              </tr>
+              <tr>
+                <td style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#14532d; line-height:1.5;">
                   <!-- Título del reporte -->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse; margin-bottom:32px;">
                     <tr>
                       <td style="font-family:Arial, Helvetica, sans-serif;">
-                        <p style="margin:0; font-size:13px; color:#6b7280; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Monitoreo SEIA</p>
-                        <p style="margin:4px 0 0 0; font-size:28px; font-weight:800; color:#111827;">Novedades del {fecha_str}</p>
+                        <p style="margin:0; font-size:13px; color:#15803d; text-transform:uppercase; letter-spacing:0.08em; font-weight:700;">Monitoreo SEIA</p>
+                        <p style="margin:4px 0 0 0; font-size:28px; font-weight:800; color:#166534;">Novedades del {fecha_str}</p>
                       </td>
                     </tr>
                   </table>
@@ -652,11 +658,11 @@ def create_combined_email_body(
                 </td>
               </tr>
               <tr>
-                <td bgcolor="#f3f4f6" style="background-color:#f3f4f6; padding:24px; text-align:center; border-top:1px solid #e5e7eb;
-                                           font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#9ca3af;">
+                <td bgcolor="#ecfdf5" style="background-color:#ecfdf5; padding:24px; text-align:center; border-top:1px solid #bbf7d0;
+                                           font-family:Arial, Helvetica, sans-serif; font-size:12px; color:#166534;">
                   <p style="margin:0 0 4px 0;">Este es un mensaje automático del sistema de monitoreo SEIA.</p>
                   <p style="margin:0 0 8px 0;">No responder a este correo electrónico.</p>
-                  <p style="margin:0; font-size:10px; color:#9ca3af;">v2026.04.27.1</p>
+                  <p style="margin:0; font-size:10px; color:#15803d;">v2026.05.12.4</p>
                 </td>
               </tr>
             </table>
